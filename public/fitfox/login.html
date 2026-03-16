@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <title>Fitfox Academy</title>
+  <meta charset="utf-8">
+  <link rel="icon" type="image/gif" href="images/zorro.gif">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700">
+  <link href="css/plugins.bundle.css" rel="stylesheet" type="text/css">
+  <link href="css/style.bundle.css" rel="stylesheet" type="text/css">
+  <link href="css/fitfox.css" rel="stylesheet" type="text/css">
+</head>
+
+<body id="kt_body" class="bg-body">
+  <div class="d-flex flex-column flex-root">
+    <div class="d-flex flex-column flex-lg-row flex-column-fluid">
+
+      <!-- Panel izquierdo — imagen de fondo -->
+      <div class="d-flex flex-column flex-lg-row-auto w-lg-600px positon-xl-relative"
+        style="background-image: url(images/imagen-login.jpg); background-size: cover; background-position: center;">
+        <div class="d-flex flex-column position-xl-fixed top-0 bottom-0 w-xl-600px scroll-y">
+          <!-- Logo solo en móvil -->
+          <div class="d-lg-none text-center w-100 p-5" style="background-color: #13263c;">
+            <center><img src="images/logo-fitfox.png" class="w-50"></center>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel derecho — formulario -->
+      <div class="d-flex flex-column flex-lg-row-fluid py-10">
+        <div class="d-flex flex-center flex-column flex-column-fluid">
+          <div class="w-lg-500px p-10 p-lg-15 mx-auto card">
+
+            <!-- Logo (solo escritorio) -->
+            <!-- <div class="text-center mb-8 d-none d-lg-block">
+              <img src="images/logo-fitfox.png" class="w-50">
+            </div> -->
+
+            <!-- Alerta de error -->
+            <div id="login-alert" class="alert alert-danger d-flex align-items-center d-none mb-8" role="alert">
+              <span class="svg-icon svg-icon-2hx svg-icon-danger me-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <rect opacity="0.3" x="2" y="2" width="20" height="20" rx="10" fill="currentColor" />
+                  <rect x="11" y="14" width="7" height="2" rx="1" transform="rotate(-90 11 14)" fill="currentColor" />
+                  <rect x="11" y="17" width="2" height="2" rx="1" transform="rotate(-90 11 17)" fill="currentColor" />
+                </svg>
+              </span>
+              <div id="login-alert-msg" class="fw-bold">Credenciales incorrectas. Por favor, inténtalo de nuevo.</div>
+            </div>
+
+            <!-- Formulario -->
+            <form id="loginForm" class="form w-100" novalidate>
+
+              <div class="text-center mb-10">
+                <h1 class="text-dark mb-3">Fitfox Academy</h1>
+                <div class="text-gray-400 fw-bold fs-4">¿Eres nuevo?
+                  <a href="/registro" class="link-primary fw-bolder">¡Crea una cuenta!</a>
+                </div>
+              </div>
+
+              <!-- Usuario -->
+              <div class="fv-row mb-10">
+                <label class="form-label fs-6 fw-bolder text-dark">Nombre de usuario / Email</label>
+                <input id="username" class="form-control form-control-lg form-control-solid" type="text" name="username"
+                  autocomplete="username" spellcheck="false">
+              </div>
+
+              <!-- Contraseña -->
+              <div class="fv-row mb-10">
+                <div class="d-flex flex-stack mb-2">
+                  <label class="form-label fw-bolder text-dark fs-6 mb-0">Password</label>
+                  <a href="/recuperar" class="link-primary fs-6 fw-bolder">¿Has olvidado la contraseña?</a>
+                </div>
+                <input id="password" class="form-control form-control-lg form-control-solid" type="password"
+                  name="password" autocomplete="current-password">
+              </div>
+
+              <!-- Botón -->
+              <div class="text-center">
+                <button type="submit" id="submitBtn" class="btn btn-lg btn-primary w-100 mb-5">
+                  <span class="indicator-label" id="btnLabel">Entrar</span>
+                  <span class="indicator-progress d-none" id="btnSpinner">
+                    Verificando…
+                    <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
+                  </span>
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="js/plugins.bundle.js"></script>
+  <script src="js/scripts.bundle.js"></script>
+
+  <script>
+    const form = document.getElementById("loginForm");
+    const submitBtn = document.getElementById("submitBtn");
+    const btnLabel = document.getElementById("btnLabel");
+    const btnSpinner = document.getElementById("btnSpinner");
+    const alert = document.getElementById("login-alert");
+    const alertMsg = document.getElementById("login-alert-msg");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById("username").value.trim();
+      const password = document.getElementById("password").value;
+
+      if (!username || !password) {
+        showAlert("Por favor, rellena todos los campos.");
+        return;
+      }
+
+      setLoading(true);
+      hideAlert();
+
+      try {
+        const res = await fetch("/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password }),
+        });
+        const data = await res.json();
+
+        if (!data.success) {
+          showAlert(data.error || "Credenciales incorrectas. Por favor, inténtalo de nuevo.");
+        }
+      } catch {
+        showAlert("Error de conexión. Inténtalo de nuevo.");
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    function setLoading(on) {
+      submitBtn.disabled = on;
+      btnLabel.classList.toggle("d-none", on);
+      btnSpinner.classList.toggle("d-none", !on);
+    }
+
+    function showAlert(msg) {
+      alertMsg.textContent = msg;
+      alert.classList.remove("d-none");
+      alert.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    function hideAlert() {
+      alert.classList.add("d-none");
+    }
+  </script>
+
+</body>
+
+</html>
