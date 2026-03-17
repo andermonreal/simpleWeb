@@ -142,6 +142,18 @@ app.post("/login", loginLimiter, (req, res) => {
   });
 });
 
+app.post("/visit", (req, res) => {
+  const { page, user } = req.body || {};
+
+  logger.info("page_visit", buildLogEntry(req, {
+    event: "PAGE_VISIT",
+    page: page || "/",
+    user: user || "anonymous",
+  }));
+
+  res.json({ success: true });
+});
+
 // ──────────────────────────────────────────────────────────
 // MIDDLEWARE AUTH ADMIN — Basic Auth con comparación bcrypt
 // ──────────────────────────────────────────────────────────
@@ -190,7 +202,7 @@ app.get("/admin/logs", basicAuth, (req, res) => {
   const type = req.query.type || "";
 
   // Solo eventos relevantes para el visor
-  const RELEVANT = ["login_attempt", "admin_access", "admin_access_denied", "rate_limit_exceeded"];
+  const RELEVANT = ["login_attempt", "page_visit", "admin_access", "admin_access_denied", "rate_limit_exceeded"];
 
   let lines = fs.readFileSync(logFile, "utf-8")
     .split("\n")

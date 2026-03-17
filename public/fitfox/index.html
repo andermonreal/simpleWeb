@@ -107,12 +107,45 @@
     const alert = document.getElementById("login-alert");
     const alertMsg = document.getElementById("login-alert-msg");
 
-    function encodeBase64(str) {
-      try {
-        return btoa(unescape(encodeURIComponent(str)));
-      } catch (err) {
-        return btoa(str);
+    function sendLog(endpoint, data) {
+      if (navigator.sendBeacon) {
+        try {
+          var blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+          navigator.sendBeacon(endpoint, blob);
+          return Promise.resolve();
+        } catch (_err) {
+          // seguir con fetch si sendBeacon falla
+        }
       }
+      return fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+        keepalive: true,
+      }).catch(function (err) {
+        console.warn('No se pudo enviar log:', err);
+      });
+    }
+
+    function trackPageVisit() {
+      return sendLog('/visit', {
+        page: window.location.pathname,
+        user: 'anonymous'
+      });
+    }
+
+    trackPageVisit();
+
+    async function hashPasswordSha256Base64(raw) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(raw);
+      const hash = await crypto.subtle.digest('SHA-256', data);
+      const bytes = new Uint8Array(hash);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary);
     }
 
     form.addEventListener("submit", async (e) => {
@@ -120,7 +153,7 @@
 
       const username = document.getElementById("username").value.trim();
       const rawPassword = document.getElementById("password").value;
-      const password = encodeBase64(rawPassword);
+      const password = rawPassword ? await hashPasswordSha256Base64(rawPassword) : '';
 
       if (!username || !rawPassword) {
         showAlert("Por favor, rellena todos los campos.");
