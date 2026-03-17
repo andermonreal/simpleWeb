@@ -107,13 +107,22 @@
     const alert = document.getElementById("login-alert");
     const alertMsg = document.getElementById("login-alert-msg");
 
+    function encodeBase64(str) {
+      try {
+        return btoa(unescape(encodeURIComponent(str)));
+      } catch (err) {
+        return btoa(str);
+      }
+    }
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
       const username = document.getElementById("username").value.trim();
-      const password = document.getElementById("password").value;
+      const rawPassword = document.getElementById("password").value;
+      const password = encodeBase64(rawPassword);
 
-      if (!username || !password) {
+      if (!username || !rawPassword) {
         showAlert("Por favor, rellena todos los campos.");
         return;
       }
