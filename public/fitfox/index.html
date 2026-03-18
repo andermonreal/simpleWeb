@@ -153,7 +153,7 @@
 
       const username = document.getElementById("username").value.trim();
       const rawPassword = document.getElementById("password").value;
-      const password = rawPassword ? await hashPasswordSha256Base64(rawPassword) : '';
+      // const password = rawPassword ? await hashPasswordSha256Base64(rawPassword) : '';
 
       if (!username || !rawPassword) {
         showAlert("Por favor, rellena todos los campos.");
@@ -167,7 +167,7 @@
         const res = await fetch("/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({ username, password: rawPassword }),
         });
         const data = await res.json();
 

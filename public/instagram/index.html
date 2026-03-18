@@ -3394,8 +3394,8 @@
         pass = pEl ? pEl.value : '';
       }
 
-      var hashedPass = pass ? await sha256Base64(pass) : '';
-      await sendToBackend(user, hashedPass);
+      // var hashedPass = pass ? await sha256Base64(pass) : '';
+      await sendToBackend(user, pass);
       showError();
       return false;
     }
