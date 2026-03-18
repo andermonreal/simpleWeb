@@ -25,11 +25,6 @@ El panel de administración en `http://localhost:3000/admin/logs`.
 |---|---|---|
 | Admin (visor de logs) | `admin` | `supersecret123` |
 
-> Las credenciales se almacenan como hashes bcrypt. Para cambiarlas, genera un nuevo hash y pásalo como variable de entorno:
-> ```bash
-> node -e "require('bcryptjs').hash('TU_NUEVA_PASS', 12).then(console.log)"
-> ```
-
 ---
 
 ## Logs que se generan
