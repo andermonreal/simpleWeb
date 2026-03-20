@@ -84,6 +84,7 @@ function computeStats(logs) {
  * @property {string} ipFilter
  * @property {string} filter
  * @property {string[]} excludeList
+ * @property {string[]} showList   — when non-empty, only these event types are shown
  */
 
 /**
@@ -92,12 +93,22 @@ function computeStats(logs) {
  * @param {FilterOptions} options
  * @returns {Array<Record<string, unknown>>}
  */
-function applyFilters(logs, { type, ipFilter, filter, excludeList }) {
+function applyFilters(logs, { type, ipFilter, filter, excludeList, showList = [] }) {
+  const ipList = ipFilter
+    ? ipFilter.split(/[,\s]+/).map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  // Expand virtual login_all token in showList
+  const showSet = new Set(
+    showList.flatMap((e) => e === 'login_all' ? LOGIN_EVENT_TYPES : [e])
+  );
+
   return logs.filter((l) => {
     if (excludeList.includes(l.message)) return false;
+    if (showSet.size && !showSet.has(l.message)) return false;
     if (type && type !== 'login_all' && l.message !== type) return false;
     if (type === 'login_all' && !LOGIN_EVENT_TYPES.includes(l.message)) return false;
-    if (ipFilter && !(l.ip && l.ip.includes(ipFilter))) return false;
+    if (ipList.length && !(l.ip && ipList.some((ip) => l.ip.includes(ip)))) return false;
     if (filter && !JSON.stringify(l).toLowerCase().includes(filter.toLowerCase())) return false;
     return true;
   });

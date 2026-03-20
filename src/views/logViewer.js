@@ -130,54 +130,54 @@ function buildStatCards({ type, ipFilter, filter }, stats, totalUniqueIPs) {
 
   const cards = [
     {
-      href:   '/admin/logs?type=login_all',
+      href: '/admin/logs?type=login_all',
       active: isLoginActive,
-      color:  '#e53e3e',
-      bg:     '#fff0f0',
-      icon:   'bi-key-fill',
-      value:  stats.loginCount,
-      label:  'Intentos login',
-      hint:   `${stats.loginNormal} normales · <span style="color:#7e22ce;">${stats.maxAttempts} redirigidos</span>`,
+      color: '#e53e3e',
+      bg: '#fff0f0',
+      icon: 'bi-key-fill',
+      value: stats.loginCount,
+      label: 'Intentos login',
+      hint: `${stats.loginNormal} normales · <span style="color:#7e22ce;">${stats.maxAttempts} redirigidos</span>`,
     },
     {
-      href:   '/admin/logs?type=max_attempts_redirect',
+      href: '/admin/logs?type=max_attempts_redirect',
       active: type === 'max_attempts_redirect',
-      color:  '#7e22ce',
-      bg:     '#faf0ff',
-      icon:   'bi-arrow-right-circle-fill',
-      value:  stats.maxAttempts,
-      label:  'Redirigidos',
-      hint:   'Clic para filtrar',
+      color: '#7e22ce',
+      bg: '#faf0ff',
+      icon: 'bi-arrow-right-circle-fill',
+      value: stats.maxAttempts,
+      label: 'Redirigidos',
+      hint: 'Clic para filtrar',
     },
     {
-      href:   '/admin/logs',
+      href: '/admin/logs',
       active: !type && !ipFilter && !filter,
-      color:  '#3b82f6',
-      bg:     '#eff6ff',
-      icon:   'bi-collection-fill',
-      value:  stats.total,
-      label:  'Total registros',
-      hint:   'Ver todos',
+      color: '#3b82f6',
+      bg: '#eff6ff',
+      icon: 'bi-collection-fill',
+      value: stats.total,
+      label: 'Total registros',
+      hint: 'Ver todos',
     },
     {
-      href:   '/admin/logs?type=admin_access_denied',
+      href: '/admin/logs?type=admin_access_denied',
       active: type === 'admin_access_denied',
-      color:  '#dd6b20',
-      bg:     '#fff8f0',
-      icon:   'bi-shield-exclamation',
-      value:  stats.adminDenied,
-      label:  'Admin denegados',
-      hint:   'Clic para filtrar',
+      color: '#dd6b20',
+      bg: '#fff8f0',
+      icon: 'bi-shield-exclamation',
+      value: stats.adminDenied,
+      label: 'Admin denegados',
+      hint: 'Clic para filtrar',
     },
     {
-      href:   '/admin/logs?type=rate_limit_exceeded',
+      href: '/admin/logs?type=rate_limit_exceeded',
       active: type === 'rate_limit_exceeded',
-      color:  '#ca8a04',
-      bg:     '#fefce8',
-      icon:   'bi-slash-circle-fill',
-      value:  stats.rateLimited,
-      label:  'Rate limits',
-      hint:   'Clic para filtrar',
+      color: '#ca8a04',
+      bg: '#fefce8',
+      icon: 'bi-slash-circle-fill',
+      value: stats.rateLimited,
+      label: 'Rate limits',
+      hint: 'Clic para filtrar',
     },
   ];
 
@@ -204,16 +204,16 @@ function buildStatCards({ type, ipFilter, filter }, stats, totalUniqueIPs) {
   return `<div class="row g-3 mb-4">${cardHTML}${ipCard}</div>`;
 }
 
-function buildFilterBar({ filter, type, ipFilter, excludeList, limit }) {
+function buildFilterBar({ filter, type, ipFilter, excludeList, showList, limit }) {
   const typeOptions = [
-    ['',                        'Todos los eventos'],
-    ['login_all',               '🔑 todos los logins (normal + redirigido)'],
-    ['login_attempt',           '🔑 login_attempt (solo normales)'],
-    ['max_attempts_redirect',   '🚨 max_attempts (solo redirigidos)'],
-    ['page_visit',              '👁 page_visit'],
-    ['admin_access',            '🛡 admin_access'],
-    ['admin_access_denied',     '⛔ admin_denied'],
-    ['rate_limit_exceeded',     '🚫 rate_limit'],
+    ['', 'Todos los eventos'],
+    ['login_all', '🔑 todos los logins (normal + redirigido)'],
+    ['login_attempt', '🔑 login_attempt (solo normales)'],
+    ['max_attempts_redirect', '🚨 max_attempts (solo redirigidos)'],
+    ['page_visit', '👁 page_visit'],
+    ['admin_access', '🛡 admin_access'],
+    ['admin_access_denied', '⛔ admin_denied'],
+    ['rate_limit_exceeded', '🚫 rate_limit'],
   ].map(([v, l]) => `<option value="${v}" ${type === v ? 'selected' : ''}>${l}</option>`).join('');
 
   const limitOptions = [25, 50, 100, 200, 500]
@@ -221,58 +221,76 @@ function buildFilterBar({ filter, type, ipFilter, excludeList, limit }) {
     .join('');
 
   const excludePills = buildExcludePills(excludeList);
+  const showPills = buildShowPills(showList);
 
   return `
 <div class="filter-card mb-4">
-  <form method="GET" action="/admin/logs" id="filterForm" class="row g-3 align-items-end">
-    <div class="col-12 col-sm-6 col-lg-3">
+  <form method="GET" action="/admin/logs" id="filterForm" class="row g-2 align-items-end">
+    <div class="col-12 col-sm-6 col-lg-5">
       <div class="filter-label"><i class="bi bi-search me-1"></i>Buscar</div>
       <div class="input-group">
         <span class="input-group-text bg-white border-end-0" style="border-color:#e2e8f0;"><i class="bi bi-search text-muted" style="font-size:.78rem;"></i></span>
         <input type="text" name="filter" class="form-control border-start-0" placeholder="IP, usuario, contraseña…" value="${escHtml(filter)}"/>
       </div>
     </div>
-    <div class="col-12 col-sm-6 col-lg-2">
-      <div class="filter-label"><i class="bi bi-geo-alt me-1"></i>Filtrar IP</div>
-      <div class="input-group">
-        <input type="text" name="ip" class="form-control ${ipFilter ? 'border-primary' : ''}" placeholder="192.168.1.1" value="${escHtml(ipFilter)}" style="font-family:var(--font-mono);font-size:.78rem;"/>
-        ${ipFilter ? `<button type="button" class="btn btn-outline-secondary" onclick="clearIpFilter()"><i class="bi bi-x"></i></button>` : ''}
-      </div>
-    </div>
-    <div class="col-6 col-sm-3 col-lg-2">
-      <div class="filter-label"><i class="bi bi-tag me-1"></i>Evento</div>
-      <select name="type" class="form-select">${typeOptions}</select>
-    </div>
     <div class="col-6 col-sm-3 col-lg-2">
       <div class="filter-label"><i class="bi bi-list-ol me-1"></i>Por página</div>
       <select name="limit" class="form-select">${limitOptions}</select>
     </div>
-    <div class="col-12 col-sm-6 col-lg-3 d-flex gap-2">
+    <div class="col-12 col-sm-6 col-lg-5 d-flex gap-2">
       <button type="submit" class="btn btn-primary flex-grow-1"><i class="bi bi-funnel-fill me-1"></i>Filtrar</button>
       <a href="/admin/logs" class="btn btn-outline-secondary px-3" title="Limpiar filtros"><i class="bi bi-x-lg"></i></a>
     </div>
+    <!-- Hidden input serialised from ipFilterPills before submit -->
+    <input type="hidden" name="ip" id="ipFilterHidden" value="${escHtml(ipFilter)}"/>
     <div id="excludeInputs"></div>
+    <div id="showInputs"></div>
+    <div class="col-12">
+      <div class="filter-label mb-2"><i class="bi bi-eye-fill me-1 text-success"></i>Mostrar solo eventos <span class="text-muted" style="font-weight:400;text-transform:none;letter-spacing:0;">(clic para activar · si hay activos solo se muestran esos)</span></div>
+      <div class="d-flex gap-2 flex-wrap" id="showToggles">${showPills}</div>
+    </div>
     <div class="col-12">
       <div class="filter-label mb-2"><i class="bi bi-eye-slash me-1"></i>Excluir eventos <span class="text-muted" style="font-weight:400;text-transform:none;letter-spacing:0;">(clic para ocultar/mostrar)</span></div>
       <div class="d-flex gap-2 flex-wrap" id="excludeToggles">${excludePills}</div>
     </div>
-    ${ipFilter ? `
-    <div class="col-12 d-flex align-items-center gap-2 flex-wrap">
-      <span class="filter-label mb-0">Mostrando sólo IP:</span>
-      <span class="ip-filter-badge"><i class="bi bi-geo-alt-fill"></i>${escHtml(ipFilter)}<span class="remove-ip" onclick="clearIpFilter()">✕</span></span>
-    </div>` : ''}
+    <!-- Filtrar por IP (server-side, results filtered) -->
+    <div class="col-12">
+      <div class="filter-label mb-2">
+        <i class="bi bi-geo-alt-fill me-1 text-primary"></i>Filtrar por IP
+        <span class="text-muted ms-1" style="font-weight:400;text-transform:none;letter-spacing:0;">— solo muestra logs de estas IPs</span>
+      </div>
+      <div class="d-flex gap-2 flex-wrap align-items-center" id="ipFilterPills">
+        <div class="input-group input-group-sm ip-add-input" style="width:260px;">
+          <input type="text" id="addIpFilterInput" class="form-control" placeholder="1.2.3.4 o varios por coma" style="font-family:var(--font-mono);font-size:.75rem;"/>
+          <button class="btn btn-outline-primary" type="button" id="addIpFilterBtn" title="Añadir IP(s) al filtro"><i class="bi bi-plus-lg"></i></button>
+        </div>
+      </div>
+    </div>
+    <!-- IPs completamente ocultas del panel -->
+    <div class="col-12" id="hiddenIpsSection">
+      <div class="filter-label mb-2">
+        <i class="bi bi-x-circle-fill me-1 text-danger"></i>IPs ocultas del panel
+        <span class="text-muted ms-1" style="font-weight:400;text-transform:none;letter-spacing:0;">— no aparecen en la tabla principal</span>
+      </div>
+      <div class="d-flex gap-2 flex-wrap align-items-center" id="hiddenIpsPills">
+        <div class="input-group input-group-sm ip-add-input" style="width:260px;">
+          <input type="text" id="addHiddenIpInput" class="form-control" placeholder="IP o varios separados por coma" style="font-family:var(--font-mono);font-size:.75rem;"/>
+          <button class="btn btn-outline-danger" type="button" id="addHiddenIpBtn" title="Añadir IP(s) a ocultas"><i class="bi bi-plus-lg"></i></button>
+        </div>
+      </div>
+    </div>
   </form>
 </div>`;
 }
 
 function buildExcludePills(excludeList) {
   const ALL_EVENTS = [
-    ['login_attempt',         '🔑 login_attempt'],
+    ['login_attempt', '🔑 login_attempt'],
     ['max_attempts_redirect', '🚨 max_attempts'],
-    ['page_visit',            '👁 page_visit'],
-    ['admin_access',          '🛡 admin_access'],
-    ['admin_access_denied',   '⛔ admin_denied'],
-    ['rate_limit_exceeded',   '🚫 rate_limit'],
+    ['page_visit', '👁 page_visit'],
+    ['admin_access', '🛡 admin_access'],
+    ['admin_access_denied', '⛔ admin_denied'],
+    ['rate_limit_exceeded', '🚫 rate_limit'],
   ];
 
   const bothLoginExcluded = excludeList.includes('login_attempt') && excludeList.includes('max_attempts_redirect');
@@ -286,11 +304,34 @@ function buildExcludePills(excludeList) {
   return masterPill + pills;
 }
 
-function buildTableCard({ lines, page, totalPages, totalFiltered, filter, type, ipFilter, excludeList, limit }) {
+function buildShowPills(showList) {
+  const ALL_EVENTS = [
+    ['login_attempt', '🔑 login_attempt'],
+    ['max_attempts_redirect', '🚨 max_attempts'],
+    ['page_visit', '👁 page_visit'],
+    ['admin_access', '🛡 admin_access'],
+    ['admin_access_denied', '⛔ admin_denied'],
+    ['rate_limit_exceeded', '🚫 rate_limit'],
+  ];
+
+  const bothLoginShown = showList.includes('login_attempt') && showList.includes('max_attempts_redirect');
+
+  const masterPill = `<button type="button" class="show-pill btn btn-sm ${bothLoginShown ? 'shown' : ''}" data-event="login_all">🔑 todos los logins</button>`;
+
+  const pills = ALL_EVENTS.map(([v, label]) =>
+    `<button type="button" class="show-pill btn btn-sm ${showList.includes(v) ? 'shown' : ''}" data-event="${v}">${label}</button>`
+  ).join('');
+
+  return masterPill + pills;
+}
+
+function buildTableCard({ lines, page, totalPages, totalFiltered, filter, type, ipFilter, excludeList, showList, limit }) {
+  const ipList = ipFilter ? ipFilter.split(/[,\s]+/).filter(Boolean) : [];
   const activeFilters = [
-    filter      && `<span class="badge bg-warning bg-opacity-15 text-warning-emphasis border border-warning border-opacity-25"><i class="bi bi-funnel-fill me-1"></i>"${escHtml(filter)}"</span>`,
-    ipFilter    && `<span class="badge bg-info bg-opacity-15 text-info-emphasis border border-info border-opacity-25"><i class="bi bi-geo-alt me-1"></i>${escHtml(ipFilter)}</span>`,
+    filter && `<span class="badge bg-warning bg-opacity-15 text-warning-emphasis border border-warning border-opacity-25"><i class="bi bi-funnel-fill me-1"></i>"${escHtml(filter)}"</span>`,
+    ipList.length && ipList.map(ip => `<span class="badge bg-info bg-opacity-15 text-info-emphasis border border-info border-opacity-25"><i class="bi bi-geo-alt me-1"></i>${escHtml(ip)}</span>`).join(''),
     excludeList.length && `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25"><i class="bi bi-eye-slash me-1"></i>${excludeList.length} oculto${excludeList.length > 1 ? 's' : ''}</span>`,
+    showList.length && `<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25"><i class="bi bi-eye-fill me-1"></i>${showList.length} solo estos</span>`,
   ].filter(Boolean).join('');
 
   const tableContent = lines.length === 0
@@ -321,16 +362,18 @@ function buildTableCard({ lines, page, totalPages, totalFiltered, filter, type, 
 }
 
 function buildTableRow(l) {
-  const isLogin    = l.message === 'login_attempt';
+  const isLogin = l.message === 'login_attempt';
   const isRedirect = l.message === 'max_attempts_redirect';
-  const isDenied   = l.message === 'admin_access_denied';
-  const rowClass   = (isLogin || isRedirect) ? 'row-login' : isDenied ? 'row-denied' : '';
+  const isDenied = l.message === 'admin_access_denied';
+  const rowClass = (isLogin || isRedirect) ? 'row-login' : isDenied ? 'row-denied' : '';
 
-  return `<tr data-line="${l._lineIndex}" class="${rowClass}">
+  return `<tr data-line="${l._lineIndex}" data-ip="${escHtml(l.ip)}" class="${rowClass}">
     <td class="text-nowrap small font-mono text-secondary">${escHtml(l.timestamp) || '—'}</td>
     <td>
-      <code class="ip-code ip-clickable" data-ip="${escHtml(l.ip)}" title="Filtrar por esta IP">${escHtml(l.ip) || '—'}</code>
-      <br/><small class="ip-geo" data-ip="${escHtml(l.ip)}">…</small>
+      <div class="ip-cell-wrap" data-ip="${escHtml(l.ip)}">
+        <code class="ip-code ip-clickable" data-ip="${escHtml(l.ip)}" title="Filtrar por esta IP">${escHtml(l.ip) || '—'}</code>
+        <small class="ip-geo" data-ip="${escHtml(l.ip)}">…</small>
+      </div>
     </td>
     <td>${renderEventBadge(l.message)}</td>
     <td class="text-nowrap">
@@ -361,12 +404,12 @@ function renderMethodBadge(method) {
 }
 
 const EVENT_BADGE_MAP = {
-  login_attempt:          ['login-badge',  '🔑 login_attempt'],
-  max_attempts_redirect:  ['purple',       '🚨 max_attempts'],
-  admin_access:           ['success',      '🛡 admin_access'],
-  admin_access_denied:    ['danger',       '⛔ admin_denied'],
-  rate_limit_exceeded:    ['warning text-dark', '🚫 rate_limit'],
-  page_visit:             ['info text-dark',    '👁 page_visit'],
+  login_attempt: ['login-badge', '🔑 login_attempt'],
+  max_attempts_redirect: ['purple', '🚨 max_attempts'],
+  admin_access: ['success', '🛡 admin_access'],
+  admin_access_denied: ['danger', '⛔ admin_denied'],
+  rate_limit_exceeded: ['warning text-dark', '🚫 rate_limit'],
+  page_visit: ['info text-dark', '👁 page_visit'],
 };
 
 function renderEventBadge(message) {
@@ -383,7 +426,7 @@ function renderEventBadge(message) {
 
 function renderPath(l) {
   if (l.page && l.path) {
-    const page  = String(l.page).replace(/\/$/, '');
+    const page = String(l.page).replace(/\/$/, '');
     const route = String(l.path).startsWith('/') ? l.path : `/${l.path}`;
     return escHtml(page + route);
   }
@@ -420,16 +463,16 @@ function buildPagination({ page, totalPages, filter, type, ipFilter, excludeList
 
   const buildUrl = (p) => {
     const q = new URLSearchParams();
-    if (filter)   q.set('filter', filter);
-    if (type)     q.set('type',   type);
-    if (ipFilter) q.set('ip',     ipFilter);
+    if (filter) q.set('filter', filter);
+    if (type) q.set('type', type);
+    if (ipFilter) q.set('ip', ipFilter);
     if (limit !== 50) q.set('limit', limit);
     excludeList.forEach((e) => q.append('exclude', e));
     q.set('page', p);
     return `/admin/logs?${q.toString()}`;
   };
 
-  const WING  = 2;
+  const WING = 2;
   const pages = [...new Set([
     1,
     ...Array.from({ length: 2 * WING + 1 }, (_, i) => page - WING + i).filter((p) => p > 1 && p < totalPages),
@@ -437,7 +480,7 @@ function buildPagination({ page, totalPages, filter, type, ipFilter, excludeList
   ])].sort((a, b) => a - b);
 
   let items = '';
-  let prev  = 0;
+  let prev = 0;
   for (const p of pages) {
     if (p - prev > 1) items += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
     items += `<li class="page-item ${p === page ? 'active' : ''}"><a class="page-link" href="${buildUrl(p)}">${p}</a></li>`;
@@ -468,15 +511,24 @@ function buildIpModal(ipStats, totalUniqueIPs) {
   const rows = Object.entries(ipStats)
     .sort((a, b) => b[1].total - a[1].total)
     .map(([ip, s]) => {
-      const risk  = s.logins > 10 ? 'danger' : s.logins > 3 ? 'warning' : 'success';
-      const label = s.logins > 10 ? 'Alto'   : s.logins > 3 ? 'Medio'   : 'Bajo';
-      return `<tr>
-        <td><code class="ip-code ip-modal-filter" data-ip="${escHtml(ip)}" style="cursor:pointer">${escHtml(ip)}</code></td>
+      const risk = s.logins > 10 ? 'danger' : s.logins > 3 ? 'warning' : 'success';
+      const label = s.logins > 10 ? 'Alto' : s.logins > 3 ? 'Medio' : 'Bajo';
+      return `<tr data-ip="${escHtml(ip)}">
+        <td>
+          <div class="ip-cell-wrap ip-cell-modal" data-ip="${escHtml(ip)}">
+            <code class="ip-code ip-modal-filter" data-ip="${escHtml(ip)}" style="cursor:pointer">${escHtml(ip)}</code>
+            <br/><small class="ip-geo ip-geo-modal" data-ip="${escHtml(ip)}">…</small>
+          </div>
+        </td>
         <td class="text-center"><span class="badge bg-primary bg-opacity-10 text-primary">${s.total}</span></td>
         <td class="text-center"><span class="badge bg-danger bg-opacity-10 text-danger">${s.logins}</span></td>
         <td class="text-center"><span class="badge bg-${risk} bg-opacity-15 text-${risk}-emphasis border border-${risk} border-opacity-25">${label}</span></td>
         <td class="small text-muted font-mono">${escHtml(s.lastSeen) || '—'}</td>
-        <td><a href="/admin/logs?ip=${encodeURIComponent(ip)}" class="btn btn-xs btn-outline-primary py-0 px-2" style="font-size:.7rem;">Filtrar</a></td>
+        <td class="text-nowrap">
+          <a href="/admin/logs?ip=${encodeURIComponent(ip)}" class="btn btn-xs btn-outline-primary py-0 px-2 me-1" style="font-size:.7rem;" title="Filtrar por esta IP">Filtrar</a>
+          <button class="btn btn-xs py-0 px-2 me-1 btn-modal-toggle-hide" data-ip="${escHtml(ip)}" style="font-size:.7rem;" title="Ocultar del panel principal"><i class="bi bi-x-circle"></i></button>
+          <button class="btn btn-xs py-0 px-2 btn-modal-toggle-blur" data-ip="${escHtml(ip)}" style="font-size:.7rem;" title="Blurrear en el panel"><i class="bi bi-eye"></i></button>
+        </td>
       </tr>`;
     }).join('');
 
@@ -495,13 +547,13 @@ function buildIpModal(ipStats, totalUniqueIPs) {
         <div class="p-3 border-bottom bg-light">
           <div class="input-group input-group-sm" style="max-width:320px;">
             <span class="input-group-text"><i class="bi bi-search"></i></span>
-            <input type="text" id="ipModalSearch" class="form-control" placeholder="Buscar IP…" oninput="filterIpTable(this.value)"/>
+            <input type="text" id="ipModalSearch" class="form-control" placeholder="Buscar IP, ciudad, país…" oninput="filterIpTable(this.value)"/>
           </div>
         </div>
         <div class="table-responsive">
           <table class="table table-hover mb-0 modal-ip-table">
             <thead><tr>
-              <th>IP</th>
+              <th>IP / Ubicación</th>
               <th class="text-center" style="cursor:pointer;" onclick="sortIpTable('total')">Total <i class="bi bi-arrow-down-up"></i></th>
               <th class="text-center" style="cursor:pointer;" onclick="sortIpTable('logins')">Logins <i class="bi bi-arrow-down-up"></i></th>
               <th class="text-center">Riesgo</th>
@@ -514,7 +566,7 @@ function buildIpModal(ipStats, totalUniqueIPs) {
         ${totalUniqueIPs === 0 ? `<div class="text-center text-muted p-4"><i class="bi bi-inbox"></i> Sin datos de IPs</div>` : ''}
       </div>
       <div class="modal-footer">
-        <small class="text-muted me-auto"><i class="bi bi-info-circle me-1"></i>Clic en una IP para filtrar.</small>
+        <small class="text-muted me-auto"><i class="bi bi-info-circle me-1"></i>Clic en una IP para filtrar · Clic en la ubicación para abrir Google Maps.</small>
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
       </div>
     </div>
@@ -639,7 +691,7 @@ function buildToast() {
 // Client-side JavaScript
 // ══════════════════════════════════════════════════════════
 
-function buildClientScript({ excludeList }) {
+function buildClientScript({ excludeList, showList }) {
   return `
 // ── Auto-refresh ─────────────────────────────────────────
 const refreshSelect    = document.getElementById('refreshSelect');
@@ -686,31 +738,70 @@ document.getElementById('gotoPage')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); goToPage(); }
 });
 
-// ── IP filter ────────────────────────────────────────────
-function clearIpFilter() {
-  const url = new URL(location.href);
-  url.searchParams.delete('ip');
-  url.searchParams.set('page', '1');
-  location.href = url.toString();
-}
-document.querySelectorAll('code.ip-clickable').forEach(el => {
-  el.addEventListener('click', e => {
-    e.stopPropagation();
-    const url = new URL(location.href);
-    url.searchParams.set('ip', el.dataset.ip);
-    url.searchParams.set('page', '1');
-    location.href = url.toString();
+// ── IP filter (pill-tag style) ────────────────────────────
+(function initIpFilter() {
+  const hiddenInput = document.getElementById('ipFilterHidden');
+  const container   = document.getElementById('ipFilterPills');
+  const textInput   = document.getElementById('addIpFilterInput');
+  const addBtn      = document.getElementById('addIpFilterBtn');
+
+  // Bootstrap initial state from the server-rendered value
+  const initial = (hiddenInput?.value || '').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+  const ipSet   = new Set(initial);
+
+  function sync() {
+    if (hiddenInput) hiddenInput.value = [...ipSet].join(',');
+  }
+
+  function renderPills() {
+    if (!container) return;
+    container.querySelectorAll('.ip-pill.type-filter').forEach(p => p.remove());
+    const inputGroup = container.querySelector('.ip-add-input');
+
+    [...ipSet].forEach(ip => {
+      const pill = document.createElement('span');
+      pill.className = 'ip-pill type-filter';
+      pill.innerHTML = ip + ' <span class="pill-remove" title="Quitar filtro">✕</span>';
+      pill.querySelector('.pill-remove').addEventListener('click', () => {
+        ipSet.delete(ip);
+        sync();
+        renderPills();
+      });
+      container.insertBefore(pill, inputGroup);
+    });
+  }
+
+  function addIPs(raw) {
+    raw.split(/[,\s]+/).map(s => s.trim()).filter(Boolean).forEach(ip => ipSet.add(ip));
+    if (textInput) textInput.value = '';
+    sync();
+    renderPills();
+  }
+
+  addBtn?.addEventListener('click',  () => addIPs(textInput?.value || ''));
+  textInput?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addIPs(textInput.value); } });
+
+  // Clicking an IP code in the table adds it to the filter pills
+  document.querySelectorAll('code.ip-clickable').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      addIPs(el.dataset.ip);
+      // Auto-submit so the server re-filters immediately
+      document.getElementById('filterForm')?.submit();
+    });
   });
-});
-document.querySelectorAll('.ip-modal-filter').forEach(el => {
-  el.addEventListener('click', () => {
-    bootstrap.Modal.getInstance(document.getElementById('ipModal'))?.hide();
-    const url = new URL(location.href);
-    url.searchParams.set('ip', el.dataset.ip);
-    url.searchParams.set('page', '1');
-    location.href = url.toString();
+
+  // Modal IP filter click
+  document.querySelectorAll('.ip-modal-filter').forEach(el => {
+    el.addEventListener('click', () => {
+      bootstrap.Modal.getInstance(document.getElementById('ipModal'))?.hide();
+      addIPs(el.dataset.ip);
+      document.getElementById('filterForm')?.submit();
+    });
   });
-});
+
+  renderPills();
+})();
 
 // ── Exclude toggles ──────────────────────────────────────
 const excludedSet = new Set(${JSON.stringify(excludeList)});
@@ -757,6 +848,52 @@ document.querySelectorAll('.exclude-pill').forEach(btn => {
   });
 });
 syncExcludeInputs();
+
+// ── Show-only toggles ────────────────────────────────────
+const shownSet = new Set(${JSON.stringify(showList)});
+
+function syncShowInputs() {
+  const container = document.getElementById('showInputs');
+  container.innerHTML = '';
+  shownSet.forEach(ev => {
+    const inp = document.createElement('input');
+    inp.type = 'hidden'; inp.name = 'show'; inp.value = ev;
+    container.appendChild(inp);
+  });
+}
+
+document.querySelectorAll('.show-pill').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const ev = btn.dataset.event;
+    if (ev === 'login_all') {
+      const bothOn = shownSet.has('login_attempt') && shownSet.has('max_attempts_redirect');
+      if (bothOn) {
+        shownSet.delete('login_attempt');
+        shownSet.delete('max_attempts_redirect');
+      } else {
+        shownSet.add('login_attempt');
+        shownSet.add('max_attempts_redirect');
+      }
+      document.querySelectorAll('.show-pill[data-event="login_attempt"], .show-pill[data-event="max_attempts_redirect"]')
+        .forEach(p => p.classList.toggle('shown', shownSet.has(p.dataset.event)));
+      btn.classList.toggle('shown', shownSet.has('login_attempt') && shownSet.has('max_attempts_redirect'));
+    } else {
+      shownSet.has(ev) ? shownSet.delete(ev) : shownSet.add(ev);
+      btn.classList.toggle('shown', shownSet.has(ev));
+      const masterPill = document.querySelector('.show-pill[data-event="login_all"]');
+      if (masterPill) {
+        masterPill.classList.toggle('shown',
+          shownSet.has('login_attempt') && shownSet.has('max_attempts_redirect'));
+      }
+    }
+    syncShowInputs();
+    clearTimeout(btn._debounce);
+    btn._debounce = setTimeout(() => {
+      document.getElementById('filterForm').submit();
+    }, 350);
+  });
+});
+syncShowInputs();
 
 // ── Password Base64 toggle ────────────────────────────────
 document.querySelectorAll('.pw-toggle').forEach(el => {
@@ -993,17 +1130,163 @@ document.querySelectorAll('[title]').forEach(el => {
   try { new bootstrap.Tooltip(el, { trigger: 'hover', placement: 'top' }); } catch {}
 });
 
+// ── Hidden & Filtered IPs ─────────────────────────────────
+//
+// Two independent lists persisted in localStorage:
+//
+//   hiddenIPs   → rows removed from the main panel AND blurred in the modal.
+//                 Safe mode: IP cannot be accidentally exposed anywhere.
+//
+//   hiddenIPs  → rows completely removed from the main panel (display:none)
+//                 Still visible (normal) in the modal.
+//
+// Blur mode (per IP) is only manageable from the modal toggle button
+// and does NOT affect panel visibility — it just blurs the IP cell
+// in the panel when hovered away.
+
+(function initIPPrivacy() {
+  const LS_HIDDEN  = 'll_hidden_ips';
+  const LS_BLURRED = 'll_blurred_ips';
+
+  function loadSet(key) {
+    try { return new Set(JSON.parse(localStorage.getItem(key) || '[]')); } catch { return new Set(); }
+  }
+  function saveSet(key, set) {
+    try { localStorage.setItem(key, JSON.stringify([...set])); } catch {}
+  }
+
+  let hiddenIPs  = loadSet(LS_HIDDEN);
+  let blurredIPs = loadSet(LS_BLURRED);
+
+  // ── Apply state to every element in the page ─────────────
+  function applyAll() {
+    // Main table rows: hidden → display:none ; blurred → blur effect
+    document.querySelectorAll('tr[data-ip]').forEach(row => {
+      const ip = row.dataset.ip;
+      if (!ip) return;
+      row.classList.toggle('ip-row-hidden', hiddenIPs.has(ip));
+      const wrap = row.querySelector('.ip-cell-wrap');
+      if (wrap) wrap.classList.toggle('ip-blurred', blurredIPs.has(ip) && !hiddenIPs.has(ip));
+    });
+
+    // Modal rows — hiddenIPs and blurredIPs both blur the cell there
+    document.querySelectorAll('#ipTableBody tr[data-ip]').forEach(row => {
+      const ip   = row.dataset.ip;
+      const cell = row.querySelector('.ip-cell-modal');
+      if (cell) cell.classList.toggle('ip-blurred', hiddenIPs.has(ip) || blurredIPs.has(ip));
+
+      // Update toggle button states
+      const hideBtn = row.querySelector('.btn-modal-toggle-hide');
+      const blurBtn = row.querySelector('.btn-modal-toggle-blur');
+      if (hideBtn) {
+        hideBtn.classList.toggle('active', hiddenIPs.has(ip));
+        hideBtn.title = hiddenIPs.has(ip) ? 'Mostrar en el panel' : 'Ocultar del panel (modo seguro)';
+        hideBtn.innerHTML = hiddenIPs.has(ip)
+          ? '<i class="bi bi-x-circle-fill"></i>'
+          : '<i class="bi bi-x-circle"></i>';
+      }
+      if (blurBtn) {
+        blurBtn.classList.toggle('active', blurredIPs.has(ip));
+        blurBtn.title = blurredIPs.has(ip) ? 'Quitar blur' : 'Blurrear en el panel';
+        blurBtn.innerHTML = blurredIPs.has(ip)
+          ? '<i class="bi bi-eye-slash-fill"></i>'
+          : '<i class="bi bi-eye"></i>';
+      }
+    });
+
+    renderPills();
+  }
+
+  // ── Filter bar pills ─────────────────────────────────────
+  function renderPills() {
+    renderPillGroup('hiddenIpsPills',  hiddenIPs,  'type-hidden',  LS_HIDDEN,  'addHiddenIpInput',  'addHiddenIpBtn');
+    renderPillGroup('blurredIpsPills', blurredIPs, 'type-blurred', LS_BLURRED, 'addBlurredIpInput', 'addBlurredIpBtn');
+  }
+
+  function renderPillGroup(containerId, set, pillClass, lsKey, inputId, btnId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    container.querySelectorAll('.ip-pill').forEach(p => p.remove());
+
+    [...set].forEach(ip => {
+      const pill = document.createElement('span');
+      pill.className = 'ip-pill ' + pillClass;
+      pill.innerHTML = ip + ' <span class="pill-remove" data-ip="' + ip + '">✕</span>';
+      pill.querySelector('.pill-remove').addEventListener('click', () => {
+        set.delete(ip);
+        saveSet(lsKey, set);
+        applyAll();
+      });
+      const inputGroup = container.querySelector('.ip-add-input');
+      container.insertBefore(pill, inputGroup);
+    });
+  }
+
+  // ── Multi-IP input helpers ────────────────────────────────
+  function parseIPs(raw) {
+    return raw.split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+  }
+
+  function wireInput(inputId, btnId, set, lsKey) {
+    const input = document.getElementById(inputId);
+    const btn   = document.getElementById(btnId);
+    if (!input || !btn) return;
+
+    function addIPs() {
+      const ips = parseIPs(input.value);
+      if (!ips.length) return;
+      ips.forEach(ip => set.add(ip));
+      saveSet(lsKey, set);
+      input.value = '';
+      applyAll();
+    }
+
+    btn.addEventListener('click', addIPs);
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addIPs(); } });
+  }
+
+  wireInput('addHiddenIpInput',  'addHiddenIpBtn',  hiddenIPs,  LS_HIDDEN);
+  wireInput('addBlurredIpInput', 'addBlurredIpBtn', blurredIPs, LS_BLURRED);
+
+  // ── Modal toggle buttons (delegated) ─────────────────────
+  document.getElementById('ipTableBody')?.addEventListener('click', e => {
+    const hideBtn = e.target.closest('.btn-modal-toggle-hide');
+    const blurBtn = e.target.closest('.btn-modal-toggle-blur');
+
+    if (hideBtn) {
+      e.stopPropagation();
+      const ip = hideBtn.dataset.ip;
+      if (hiddenIPs.has(ip)) hiddenIPs.delete(ip);
+      else                    hiddenIPs.add(ip);
+      saveSet(LS_HIDDEN, hiddenIPs);
+      applyAll();
+    }
+
+    if (blurBtn) {
+      e.stopPropagation();
+      const ip = blurBtn.dataset.ip;
+      if (blurredIPs.has(ip)) blurredIPs.delete(ip);
+      else                     blurredIPs.add(ip);
+      saveSet(LS_BLURRED, blurredIPs);
+      applyAll();
+    }
+  });
+
+  // Run on load
+  applyAll();
+})();
+
 // ── IP Geolocation ────────────────────────────────────────
-// Collects all unique IPs on the page, fetches location once per IP
-// (cached in sessionStorage to avoid repeat requests on reload),
-// then updates every matching .ip-geo label with "Ciudad, País".
+// Collects all unique IPs (table + modal), fetches location once per IP
+// via the server-side proxy (avoids CORS), caches in sessionStorage,
+// then renders "🇪🇸 Pamplona, Spain" as a clickable link → Google Maps.
 
 (function initGeo() {
   const GEO_CACHE_KEY = 'll_geo_cache';
   const SKIP_IPS      = new Set(['unknown', '127.0.0.1', '::1', '::ffff:127.0.0.1']);
-  const DELAY_MS      = 120; // ms between requests — stays well within free-tier limits
+  const DELAY_MS      = 120;
 
-  // Load persistent cache from sessionStorage
   let cache = {};
   try { cache = JSON.parse(sessionStorage.getItem(GEO_CACHE_KEY) || '{}'); } catch {}
 
@@ -1011,53 +1294,71 @@ document.querySelectorAll('[title]').forEach(el => {
     try { sessionStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
   }
 
-  // Gather unique IPs from the table
-  const geoEls   = document.querySelectorAll('.ip-geo[data-ip]');
+  function mapsUrl(lat, lng, label) {
+    if (lat && lng) return 'https://www.google.com/maps?q=' + lat + ',' + lng;
+    return 'https://www.google.com/maps/search/' + encodeURIComponent(label);
+  }
+
+  function applyGeo(ip, { label, flag, lat, lng }) {
+    document.querySelectorAll('.ip-geo[data-ip="' + ip + '"]').forEach(el => {
+      if (el.classList.contains('loaded') || el.classList.contains('error')) return;
+      const text = (flag ? flag + '\u202F' : '') + label;
+      const url  = mapsUrl(lat, lng, label);
+      el.textContent  = text;
+      el.title        = 'Abrir en Google Maps';
+      el.classList.add('loaded');
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        window.open(url, '_blank', 'noopener');
+      });
+    });
+  }
+
+  function applyError(ip) {
+    document.querySelectorAll('.ip-geo[data-ip="' + ip + '"]').forEach(el => {
+      el.textContent = 'Desconocida';
+      el.classList.add('error');
+    });
+  }
+
+  // Gather unique IPs from ALL .ip-geo elements (table rows + modal rows)
+  const geoEls    = document.querySelectorAll('.ip-geo[data-ip]');
   const uniqueIPs = [...new Set([...geoEls].map(el => el.dataset.ip))]
     .filter(ip => ip && !SKIP_IPS.has(ip));
 
-  // Apply cached results immediately (no flash)
-  geoEls.forEach(el => {
-    const cached = cache[el.dataset.ip];
-    if (cached) applyGeo(el.dataset.ip, cached);
+  // Paint cached entries immediately — no flash of "…"
+  uniqueIPs.filter(ip => cache[ip]).forEach(ip => {
+    if (cache[ip].error) applyError(ip);
+    else applyGeo(ip, cache[ip]);
   });
 
-  // Fetch only IPs not yet cached, one by one with a small delay
+  // Fetch uncached IPs one by one (rate-limit friendly)
   const pending = uniqueIPs.filter(ip => !cache[ip]);
 
   pending.forEach((ip, i) => {
     setTimeout(async () => {
       try {
-        const res  = await fetch('https://ipapi.co/' + encodeURIComponent(ip) + '/json/');
+        const res  = await fetch('/admin/geo/' + encodeURIComponent(ip));
         const data = await res.json();
 
-        if (data.error) throw new Error(data.reason || 'not found');
+        if (data.error) throw new Error(data.error);
 
         const label = [data.city, data.country_name].filter(Boolean).join(', ') || '—';
         const flag  = data.country_code
-          ? String.fromCodePoint(...[...data.country_code.toUpperCase()].map(c => 0x1F1E0 - 65 + c.charCodeAt(0)))
+          ? String.fromCodePoint(...[...data.country_code.toUpperCase()]
+              .map(c => 0x1F1E0 - 65 + c.charCodeAt(0)))
           : '';
 
-        cache[ip] = { label, flag };
+        cache[ip] = { label, flag, lat: data.latitude, lng: data.longitude };
         saveCache();
         applyGeo(ip, cache[ip]);
       } catch {
-        cache[ip] = { label: 'Desconocida', flag: '' };
+        cache[ip] = { error: true };
         saveCache();
-        document.querySelectorAll('.ip-geo[data-ip="' + ip + '"]').forEach(el => {
-          el.textContent = 'Desconocida';
-          el.classList.add('error');
-        });
+        applyError(ip);
       }
     }, i * DELAY_MS);
   });
-
-  function applyGeo(ip, { label, flag }) {
-    document.querySelectorAll('.ip-geo[data-ip="' + ip + '"]').forEach(el => {
-      el.textContent = (flag ? flag + ' ' : '') + label;
-      el.classList.add('loaded');
-    });
-  }
 })();`;
 }
 
@@ -1095,6 +1396,10 @@ const STYLES = `
   .exclude-pill:hover{border-color:#94a3b8;background:#f1f5f9;}
   .exclude-pill.excluded{background:#fef2f2;border-color:#fca5a5;color:#ef4444;text-decoration:line-through;opacity:.75;}
   .exclude-pill.excluded:hover{opacity:1;}
+  .show-pill{font-size:.72rem;padding:.25rem .65rem;border-radius:20px;border:1.5px solid var(--clr-border);background:var(--clr-surface);color:var(--clr-text);transition:all .15s;user-select:none;}
+  .show-pill:hover{border-color:#6ee7b7;background:#f0fdf4;}
+  .show-pill.shown{background:#f0fdf4;border-color:#6ee7b7;color:#059669;font-weight:600;}
+  .show-pill.shown:hover{opacity:.85;}
   .table-card{background:var(--clr-surface);border:1px solid var(--clr-border);border-radius:var(--radius-card);overflow:hidden;box-shadow:var(--shadow-card);}
   .table-card-header{padding:.9rem 1.3rem;border-bottom:1px solid var(--clr-border);display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;background:#fafbfc;}
   .table-card-title{font-weight:600;font-size:.9rem;color:var(--clr-text);display:flex;align-items:center;gap:.5rem;}
@@ -1109,9 +1414,41 @@ const STYLES = `
   .ip-code{font-family:var(--font-mono);font-size:.78em;background:#eff6ff;color:#2563eb;padding:2px 7px;border-radius:6px;white-space:nowrap;}
   .ip-clickable{cursor:pointer;transition:background .15s;}
   .ip-clickable:hover{background:#dbeafe;}
+  /* ── IP cell wrapper ── */
+  .ip-cell-wrap{display:inline-flex;flex-direction:column;gap:2px;}
+  /* ── Blurred IP: hover reveals, mouse-out re-blurs ── */
+  .ip-cell-wrap.ip-blurred .ip-code,
+  .ip-cell-wrap.ip-blurred .ip-geo{filter:blur(7px);user-select:none;transition:filter .2s;pointer-events:none;}
+  .ip-cell-wrap.ip-blurred:hover .ip-code,
+  .ip-cell-wrap.ip-blurred:hover .ip-geo{filter:none;}
+  .ip-cell-wrap.ip-blurred{cursor:default;}
+  /* ── Hidden rows: completely removed from view ── */
+  tr.ip-row-hidden{display:none!important;}
+  /* ── Modal: blurred cell hover reveal ── */
+  .ip-cell-modal.ip-blurred .ip-code,
+  .ip-cell-modal.ip-blurred .ip-geo-modal{filter:blur(7px);user-select:none;transition:filter .2s;pointer-events:none;}
+  .ip-cell-modal.ip-blurred:hover .ip-code,
+  .ip-cell-modal.ip-blurred:hover .ip-geo-modal{filter:none;}
+  .ip-cell-modal.ip-blurred{cursor:default;}
+  /* ── Modal action buttons state ── */
+  .btn-modal-toggle-hide{border:1.5px solid #fca5a5;color:#ef4444;background:transparent;}
+  .btn-modal-toggle-hide:hover,.btn-modal-toggle-hide.active{background:#fef2f2;border-color:#ef4444;color:#dc2626;}
+  .btn-modal-toggle-hide.active{background:#fee2e2;}
+  .btn-modal-toggle-blur{border:1.5px solid #c7d2fe;color:#6366f1;background:transparent;}
+  .btn-modal-toggle-blur:hover,.btn-modal-toggle-blur.active{background:#eef2ff;border-color:#6366f1;color:#4338ca;}
+  .btn-modal-toggle-blur.active{background:#e0e7ff;}
+  /* ── IP pills in filter bar ── */
+  .ip-pill{display:inline-flex;align-items:center;gap:.4rem;border-radius:20px;padding:.22rem .65rem;font-size:.72rem;font-family:var(--font-mono);transition:border-color .15s;}
+  .ip-pill.type-hidden{background:#fef2f2;border:1.5px solid #fca5a5;color:#dc2626;}
+  .ip-pill.type-blurred{background:#eef2ff;border:1.5px solid #c7d2fe;color:#4338ca;}
+  .ip-pill.type-filter{background:#eff6ff;border:1.5px solid #93c5fd;color:#1d4ed8;}
+  .ip-pill .pill-remove{cursor:pointer;font-weight:700;opacity:.6;transition:opacity .15s;font-family:sans-serif;line-height:1;}
+  .ip-pill .pill-remove:hover{opacity:1;}
+  .ip-add-input .form-control:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12);}
   .ip-geo{font-family:var(--font-body);font-size:.67rem;color:var(--clr-muted);white-space:nowrap;display:inline-block;margin-top:2px;}
-  .ip-geo.loaded{color:#64748b;}
-  .ip-geo.error{color:#cbd5e1;font-style:italic;}
+  .ip-geo.loaded{color:#2563eb;cursor:pointer;text-decoration:none;}
+  .ip-geo.loaded:hover{text-decoration:underline;color:#1d4ed8;}
+  .ip-geo.error{color:#cbd5e1;font-style:italic;cursor:default;}
   .pw-code{font-family:var(--font-mono);font-size:.78em;background:#fff1f2;color:#dc2626;padding:2px 7px;border-radius:6px;word-break:break-all;}
   .pw-toggle{cursor:pointer;transition:background .15s,color .15s;}
   .pw-toggle:hover{filter:brightness(.92);}

@@ -92,6 +92,43 @@ router.delete('/logs/line/:index', basicAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// ── Geo proxy ───────────────────────────────────────────
+// Fetches IP geolocation server-side to avoid CORS restrictions.
+// Results are NOT cached here — the client handles its own sessionStorage cache.
+
+const SKIP_GEO_IPS = new Set(['unknown', '127.0.0.1', '::1', '::ffff:127.0.0.1']);
+
+router.get('/geo/:ip', basicAuth, async (req, res) => {
+  const { ip } = req.params;
+
+  if (!ip || SKIP_GEO_IPS.has(ip)) {
+    return res.json({ city: null, country_name: null, country_code: null });
+  }
+
+  try {
+    const upstream = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, {
+      headers: { 'User-Agent': 'login-logger/1.0' },
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (!upstream.ok) throw new Error(`ipapi.co responded ${upstream.status}`);
+
+    const data = await upstream.json();
+
+    if (data.error) throw new Error(data.reason || 'lookup failed');
+
+    res.json({
+      city:         data.city         || null,
+      country_name: data.country_name || null,
+      country_code: data.country_code || null,
+      latitude:     data.latitude     || null,
+      longitude:    data.longitude    || null,
+    });
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
 // ── Session ─────────────────────────────────────────────
 
 /**
@@ -116,6 +153,7 @@ router.get('/logged-out', (req, res) => {
  */
 function parseLogQueryOptions(query) {
   const excludeRaw = query.exclude;
+  const showRaw    = query.show;
 
   return {
     limit:       Math.min(Math.max(parseInt(query.limit) || 50, 1), 500),
@@ -125,6 +163,9 @@ function parseLogQueryOptions(query) {
     ipFilter:    String(query.ip     || ''),
     excludeList: excludeRaw
       ? (Array.isArray(excludeRaw) ? excludeRaw : [excludeRaw])
+      : [],
+    showList: showRaw
+      ? (Array.isArray(showRaw) ? showRaw : [showRaw])
       : [],
   };
 }
