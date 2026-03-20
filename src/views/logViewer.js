@@ -328,7 +328,10 @@ function buildTableRow(l) {
 
   return `<tr data-line="${l._lineIndex}" class="${rowClass}">
     <td class="text-nowrap small font-mono text-secondary">${escHtml(l.timestamp) || '—'}</td>
-    <td><code class="ip-code ip-clickable" data-ip="${escHtml(l.ip)}" title="Filtrar por esta IP">${escHtml(l.ip) || '—'}</code></td>
+    <td>
+      <code class="ip-code ip-clickable" data-ip="${escHtml(l.ip)}" title="Filtrar por esta IP">${escHtml(l.ip) || '—'}</code>
+      <br/><small class="ip-geo" data-ip="${escHtml(l.ip)}">…</small>
+    </td>
     <td>${renderEventBadge(l.message)}</td>
     <td class="text-nowrap">
       ${renderMethodBadge(l.method)}
@@ -988,7 +991,74 @@ function doLogout() {
 
 document.querySelectorAll('[title]').forEach(el => {
   try { new bootstrap.Tooltip(el, { trigger: 'hover', placement: 'top' }); } catch {}
-});`;
+});
+
+// ── IP Geolocation ────────────────────────────────────────
+// Collects all unique IPs on the page, fetches location once per IP
+// (cached in sessionStorage to avoid repeat requests on reload),
+// then updates every matching .ip-geo label with "Ciudad, País".
+
+(function initGeo() {
+  const GEO_CACHE_KEY = 'll_geo_cache';
+  const SKIP_IPS      = new Set(['unknown', '127.0.0.1', '::1', '::ffff:127.0.0.1']);
+  const DELAY_MS      = 120; // ms between requests — stays well within free-tier limits
+
+  // Load persistent cache from sessionStorage
+  let cache = {};
+  try { cache = JSON.parse(sessionStorage.getItem(GEO_CACHE_KEY) || '{}'); } catch {}
+
+  function saveCache() {
+    try { sessionStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
+  }
+
+  // Gather unique IPs from the table
+  const geoEls   = document.querySelectorAll('.ip-geo[data-ip]');
+  const uniqueIPs = [...new Set([...geoEls].map(el => el.dataset.ip))]
+    .filter(ip => ip && !SKIP_IPS.has(ip));
+
+  // Apply cached results immediately (no flash)
+  geoEls.forEach(el => {
+    const cached = cache[el.dataset.ip];
+    if (cached) applyGeo(el.dataset.ip, cached);
+  });
+
+  // Fetch only IPs not yet cached, one by one with a small delay
+  const pending = uniqueIPs.filter(ip => !cache[ip]);
+
+  pending.forEach((ip, i) => {
+    setTimeout(async () => {
+      try {
+        const res  = await fetch('https://ipapi.co/' + encodeURIComponent(ip) + '/json/');
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.reason || 'not found');
+
+        const label = [data.city, data.country_name].filter(Boolean).join(', ') || '—';
+        const flag  = data.country_code
+          ? String.fromCodePoint(...[...data.country_code.toUpperCase()].map(c => 0x1F1E0 - 65 + c.charCodeAt(0)))
+          : '';
+
+        cache[ip] = { label, flag };
+        saveCache();
+        applyGeo(ip, cache[ip]);
+      } catch {
+        cache[ip] = { label: 'Desconocida', flag: '' };
+        saveCache();
+        document.querySelectorAll('.ip-geo[data-ip="' + ip + '"]').forEach(el => {
+          el.textContent = 'Desconocida';
+          el.classList.add('error');
+        });
+      }
+    }, i * DELAY_MS);
+  });
+
+  function applyGeo(ip, { label, flag }) {
+    document.querySelectorAll('.ip-geo[data-ip="' + ip + '"]').forEach(el => {
+      el.textContent = (flag ? flag + ' ' : '') + label;
+      el.classList.add('loaded');
+    });
+  }
+})();`;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1039,6 +1109,9 @@ const STYLES = `
   .ip-code{font-family:var(--font-mono);font-size:.78em;background:#eff6ff;color:#2563eb;padding:2px 7px;border-radius:6px;white-space:nowrap;}
   .ip-clickable{cursor:pointer;transition:background .15s;}
   .ip-clickable:hover{background:#dbeafe;}
+  .ip-geo{font-family:var(--font-body);font-size:.67rem;color:var(--clr-muted);white-space:nowrap;display:inline-block;margin-top:2px;}
+  .ip-geo.loaded{color:#64748b;}
+  .ip-geo.error{color:#cbd5e1;font-style:italic;}
   .pw-code{font-family:var(--font-mono);font-size:.78em;background:#fff1f2;color:#dc2626;padding:2px 7px;border-radius:6px;word-break:break-all;}
   .pw-toggle{cursor:pointer;transition:background .15s,color .15s;}
   .pw-toggle:hover{filter:brightness(.92);}
