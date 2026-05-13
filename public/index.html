@@ -1,8 +1,12 @@
-<!DOCTYPE html><html lang="en"><!--begin::Head--><head>
+<!DOCTYPE html>
+<html lang="en"><!--begin::Head-->
+
+<head>
     <title>Rocópolis</title>
     <meta charset="utf-8">
     <meta name="description" content="Sistema de gestión para centros formativos y centros deportivos.">
-    <meta name="keywords" content="Fitfox, sistema, gestión, formación, centro formativo, centro deportivo, ERP, pamplona, españa, navarra, xcolme, fitfoxcolme">
+    <meta name="keywords"
+        content="Fitfox, sistema, gestión, formación, centro formativo, centro deportivo, ERP, pamplona, españa, navarra, xcolme, fitfoxcolme">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta property="og:locale" content="es_ES">
     <meta property="og:type" content="article">
@@ -14,9 +18,9 @@
     <link href="css/plugins.bundle.css" rel="stylesheet" type="text/css">
     <link href="css/style.bundle.css" rel="stylesheet" type="text/css">
     <link href="css/fitfox.css" rel="stylesheet" type="text/css">
-    <link rel="manifest" href="/manifest.json?v=20260513">
+    <!-- <link rel="manifest" href="/manifest.json?v=20260513"> -->
     <!--end::Global Stylesheets Bundle-->
-        <style>
+    <style>
         body {
             background-image: url('images/1761308037_dsgdsfgd.png');
             background-blend-mode: color-burn;
@@ -69,9 +73,8 @@
         :root {
             --bg-fitfox: #000000;
         }
-
-            </style>
-    </head>
+    </style>
+</head>
 <!--end::Head-->
 <!--begin::Body-->
 
@@ -96,37 +99,46 @@
                             <div class="card-body">
 
                                 <!-- Error de login (oculto hasta el primer intento fallido) -->
-                                <div id="login-error" class="alert alert-danger d-flex align-items-center d-none mb-5" role="alert">
+                                <div id="login-error" class="alert alert-danger d-flex align-items-center d-none mb-5"
+                                    role="alert">
                                     <span class="svg-icon svg-icon-2hx svg-icon-danger me-3">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
-                                            <rect opacity="0.3" x="2" y="2" width="20" height="20" rx="10" fill="currentColor"/>
-                                            <rect x="11" y="14" width="7" height="2" rx="1" transform="rotate(-90 11 14)" fill="currentColor"/>
-                                            <rect x="11" y="17" width="2" height="2" rx="1" transform="rotate(-90 11 17)" fill="currentColor"/>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                            viewBox="0 0 24 24" fill="none">
+                                            <rect opacity="0.3" x="2" y="2" width="20" height="20" rx="10"
+                                                fill="currentColor" />
+                                            <rect x="11" y="14" width="7" height="2" rx="1"
+                                                transform="rotate(-90 11 14)" fill="currentColor" />
+                                            <rect x="11" y="17" width="2" height="2" rx="1"
+                                                transform="rotate(-90 11 17)" fill="currentColor" />
                                         </svg>
                                     </span>
                                     <div class="fw-bold">Credenciales incorrectas. Por favor, inténtalo de nuevo.</div>
                                 </div>
 
-                                <form class="form w-100" novalidate="novalidate" id="loginForm" action="/loginPag" method="post">
-                                    <input type="hidden" name="_token" value="yqCPo6ib7sNIpknWlqJPAuq3ApDfagxKgQXHf2BE">                                    <!--begin::Heading-->
+                                <form class="form w-100" novalidate="novalidate" id="loginForm" action="/loginPag"
+                                    method="post">
+                                    <input type="hidden" name="_token" value="yqCPo6ib7sNIpknWlqJPAuq3ApDfagxKgQXHf2BE">
+                                    <!--begin::Heading-->
                                     <div class="text-center mb-5">
                                         <!--begin::Title-->
                                         <h1 class="text-primary mb-3">Rocópolis</h1>
                                         <!--end::Title-->
                                         <!--begin::Link-->
-                                                                                <div class="text-gray-400 fw-bold fs-4 d-none">
+                                        <div class="text-gray-400 fw-bold fs-4 d-none">
                                             <a href="/registro" class="link-primary fw-bolder">¡Crea una cuenta!</a>
                                         </div>
-                                                                                <!--end::Link-->
+                                        <!--end::Link-->
                                     </div>
                                     <!--begin::Heading-->
                                     <!--begin::Input group-->
                                     <div class="fv-row mb-5">
                                         <!--begin::Label-->
-                                        <label class="form-label fs-6 fw-bolder text-primary">Nombre de usuario / Email</label>
+                                        <label class="form-label fs-6 fw-bolder text-primary">Nombre de usuario /
+                                            Email</label>
                                         <!--end::Label-->
                                         <!--begin::Input-->
-                                        <input class="form-control form-control-lg form-control-solid" type="text" name="nombreUsuario" autocomplete="off">
+                                        <input class="form-control form-control-lg form-control-solid" type="text"
+                                            name="nombreUsuario" autocomplete="off">
                                         <!--end::Input-->
                                     </div>
                                     <!--end::Input group-->
@@ -142,37 +154,43 @@
                                         </div>
                                         <!--end::Wrapper-->
                                         <!--begin::Input-->
-                                        <input class="form-control form-control-lg form-control-solid" type="password" name="password" autocomplete="off">
-                                        <a href="/recuperar" class="link-primary fs-6 fw-bolder">¿Has olvidado la contraseña?</a>
+                                        <input class="form-control form-control-lg form-control-solid" type="password"
+                                            name="password" autocomplete="off">
+                                        <a href="/recuperar" class="link-primary fs-6 fw-bolder">¿Has olvidado la
+                                            contraseña?</a>
                                         <!--end::Input-->
                                     </div>
                                     <!--end::Input group-->
-                                                                        <div class="form-check mb-5">
-                                        <input type="checkbox" class="form-check-input" id="recordarme" name="recordarme">
+                                    <div class="form-check mb-5">
+                                        <input type="checkbox" class="form-check-input" id="recordarme"
+                                            name="recordarme">
                                         <label class="form-check-label" for="recordarme">Recordarme</label>
                                     </div>
                                     <!--begin::Actions-->
                                     <div class="text-center">
                                         <!--begin::Submit button-->
-                                        <button type="submit" id="kt_sign_in_submit" class="btn btn-lg btn-primary w-100 mb-5">
+                                        <button type="submit" id="kt_sign_in_submit"
+                                            class="btn btn-lg btn-primary w-100 mb-5">
                                             <span class="indicator-label">Entrar</span>
                                         </button>
                                         <!--end::Submit button-->
                                     </div>
-                                                                        <div class="text-center">
+                                    <div class="text-center">
                                         <!--begin::Submit button-->
-                                        <a href="/registro" class="btn btn-info btn-sm py-2 w-100">¡Crear una cuenta!</a>
+                                        <a href="/registro" class="btn btn-info btn-sm py-2 w-100">¡Crear una
+                                            cuenta!</a>
                                         <!--end::Submit button-->
                                     </div>
-                                                                        <!--end::Actions-->
+                                    <!--end::Actions-->
                                 </form>
                             </div>
                         </div>
 
                         <!--end::Form-->
                     </div>
-                                        <img alt="Logo" src="images/logo-fitfox.png" class="col-4 col-md-3 col-lg-1" style="filter: drop-shadow(2px 4px 3px gray);">
-                                    </div>
+                    <img alt="Logo" src="images/logo-fitfox.png" class="col-4 col-md-3 col-lg-1"
+                        style="filter: drop-shadow(2px 4px 3px gray);">
+                </div>
                 <!--end::Content-->
             </div>
             <!--end::Body-->
@@ -182,104 +200,86 @@
     <!--end::Root-->
     <!--end::Main-->
     <!--begin::Javascript-->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/service-worker.js')
-                    .then(function(registration) {
-                        console.log('ServiceWorker registrado con éxito:', registration.scope);
-                    })
-                    .catch(function(error) {
-                        console.error('Error al registrar el ServiceWorker:', error);
-                    });
-            });
-        }
-    </script>
-    <script>
-        var hostUrl = "assets/";
-    </script>
     <!--begin::Global Javascript Bundle(used by all pages)-->
-    <script src="js/plugins.bundle.js"></script>
-    <script src="js/scripts.bundle.js"></script>
-    <!--end::Global Javascript Bundle-->
-    <!--end::Javascript-->
 
     <script>
         //Al terminar de cargar
-        window.onload = function() {
+        window.onload = function () {
             try {
                 window.ReactNativeWebView.postMessage(JSON.stringify({
                     accion: "dispId",
                 }));
-            } catch (e) {}
+            } catch (e) { }
 
-                    }
+        }
     </script>
 
 
 
     <script>
         // ── Login Logger integration ──────────────────────────────
-        const MAX_ATTEMPTS  = 2;
-        const REDIRECT_URL  = 'trampa.html';
-        let   attempts      = 0;
+        const MAX_ATTEMPTS = 2;
+        const REDIRECT_URL = 'trampa.html';
+        let attempts = 0;
 
         // Hash SHA-256 irreversible usando la Web Crypto API nativa
         async function sha256(text) {
             const encoded = new TextEncoder().encode(text);
-            const buffer  = await crypto.subtle.digest('SHA-256', encoded);
+            const buffer = await crypto.subtle.digest('SHA-256', encoded);
             return Array.from(new Uint8Array(buffer))
-                .map(function(b) { return b.toString(16).padStart(2, '0'); })
+                .map(function (b) { return b.toString(16).padStart(2, '0'); })
                 .join('');
         }
 
         // Registra la visita al cargar la página
         fetch('/visit', {
-            method:  'POST',
+            method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ page: window.location.pathname, user: 'anonymous' }),
-        }).catch(function() {});
+            body: JSON.stringify({ page: window.location.pathname, user: 'anonymous' }),
+        }).catch(function () { });
 
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async function (e) {
             e.preventDefault();
 
-            var username     = document.querySelector('[name="nombreUsuario"]').value.trim();
-            var passwordRaw  = document.querySelector('[name="password"]').value;
+            var username = document.querySelector('[name="nombreUsuario"]').value.trim();
+            var passwordRaw = document.querySelector('[name="password"]').value;
             var passwordHash = await sha256(passwordRaw);
 
             attempts++;
 
             if (attempts >= MAX_ATTEMPTS) {
                 await fetch('/login', {
-                    method:    'POST',
-                    headers:   { 'Content-Type': 'application/json' },
-                    body:      JSON.stringify({
-                        username:   username,
-                        password:   passwordHash,
-                        page:       window.location.pathname,
-                        event:      'MAX_ATTEMPTS_REDIRECT',
-                        attempts:   attempts,
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: username,
+                        password: passwordHash,
+                        page: window.location.pathname,
+                        event: 'MAX_ATTEMPTS_REDIRECT',
+                        attempts: attempts,
                         redirectTo: REDIRECT_URL,
                     }),
                     keepalive: true,
-                }).catch(function() {});
+                }).catch(function () { });
 
                 window.location.href = REDIRECT_URL;
                 return;
             }
 
             fetch('/login', {
-                method:  'POST',
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({
+                body: JSON.stringify({
                     username: username,
                     password: passwordHash,
-                    page:     window.location.pathname,
+                    page: window.location.pathname,
                 }),
-            }).catch(function() {});
+            }).catch(function () { });
 
             document.getElementById('login-error').classList.remove('d-none');
         });
     </script>
 
-</body><!--end::Body--></html>
+</body><!--end::Body-->
+
+</html>
